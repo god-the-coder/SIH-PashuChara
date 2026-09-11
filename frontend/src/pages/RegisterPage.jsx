@@ -1,37 +1,56 @@
 import { Link } from 'react-router-dom'
+import { UserPlus, ArrowLeft } from 'lucide-react'
+import {
+  Container,
+  Stack,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Button,
+  Divider,
+} from '../components'
 import { ROUTES } from '../constants/routes'
 
 function RegisterPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 shadow-xs">
-          <span className="text-2xl" role="img" aria-label="user">
-            👤
-          </span>
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Create Account
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Registration placeholder for PashuChara-AI.
-        </p>
+    <main className="min-h-screen flex items-center justify-center py-12">
+      <Container size="sm">
+        <Card>
+          <CardHeader className="text-center items-center">
+            <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 shadow-xs">
+              <UserPlus className="w-6 h-6" />
+            </div>
+            <CardTitle>Create Account</CardTitle>
+            <CardDescription>
+              Join PashuChara-AI to optimize ration costs and animal productivity.
+            </CardDescription>
+          </CardHeader>
 
-        <div className="mt-6 flex flex-col gap-3">
-          <Link
-            to={ROUTES.LOGIN}
-            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-sm text-center transition-colors"
-          >
-            Already have an account? Sign In
-          </Link>
-          <Link
-            to={ROUTES.HOME}
-            className="w-full py-2.5 px-4 rounded-xl text-slate-500 hover:text-slate-700 font-medium text-sm text-center transition-colors"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
+          <CardContent>
+            <Stack direction="col" spacing="sm">
+              <Link to={ROUTES.LOGIN} className="w-full">
+                <Button variant="outline" fullWidth>
+                  Already have an account? Sign In
+                </Button>
+              </Link>
+
+              <Divider label="or" />
+
+              <Link to={ROUTES.HOME} className="w-full">
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  leftIcon={<ArrowLeft className="w-4 h-4" />}
+                >
+                  Back to Home
+                </Button>
+              </Link>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
     </main>
   )
 }
