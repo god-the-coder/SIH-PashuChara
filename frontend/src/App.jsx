@@ -1,16 +1,8 @@
-import { useState } from 'react'
-import './App.css'
+import { RouterProvider } from 'react-router-dom'
+import { router } from './routes'
 
 function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-green-100">
-      <h1 className="text-4xl font-bold text-green-800">
-        PashuChara AI
-      </h1>
-    </div>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

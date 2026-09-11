@@ -1,0 +1,769 @@
+# PashuChara AI
+
+## Project Requirements & Architecture Specification
+
+**Project:** PashuChara AI
+**Purpose:** Smart visual inspection of silage and animal feed for farmers
+**Stage:** SIH Project — Backend Implementation
+**Document Type:** Source of Truth for Development Agents
+
+---
+
+# 1. Project Overview
+
+PashuChara AI is a farmer-focused application that helps farmers inspect the visible condition and quality of:
+
+* Silage
+* Animal feed
+
+The farmer provides basic information and captures images of the material. The AI analyzes the visual information and produces an understandable inspection result with actionable recommendations.
+
+The application is designed to make inspection simple enough for a farmer to use without requiring technical knowledge.
+
+The system must clearly distinguish between:
+
+1. What can reasonably be assessed visually using AI.
+2. What cannot be reliably determined without laboratory or physical testing.
+
+The application should therefore avoid presenting AI predictions as guaranteed scientific/laboratory results.
+
+---
+
+# 2. Primary User
+
+The primary user is a farmer.
+
+The UI and APIs should prioritize:
+
+* Simplicity
+* Clear terminology
+* Minimal unnecessary input
+* Actionable results
+* Easy inspection history
+* Easy access to previous batches
+* Mobile-friendly usage
+
+The farmer should not need to understand the internal AI model or technical implementation.
+
+---
+
+# 3. Core Application Flow
+
+The main application starts from a task-focused home screen.
+
+```text
+Home
+├── Check Silage
+├── Check Animal Feed
+├── My Batches
+├── Inspection History
+└── My Farm
+```
+
+The home screen is not intended to become a dashboard overloaded with unnecessary information.
+
+The primary purpose is to help the farmer quickly perform an inspection or access existing information.
+
+---
+
+# 4. Inspection Flow
+
+The core inspection workflow is:
+
+```text
+Select Silage / Feed
+        ↓
+Basic Information
+        ↓
+Capture Images
+        ↓
+AI Analysis
+        ↓
+Inspection Result
+        ↓
+Recommendations
+        ↓
+Save Inspection
+```
+
+The inspection is the central feature of the application.
+
+---
+
+# 5. Inspection Session vs Batch
+
+An important architectural distinction exists between an inspection session and a permanent batch.
+
+When a farmer starts:
+
+```text
+Check Silage
+```
+
+or
+
+```text
+Check Animal Feed
+```
+
+the system creates a temporary inspection session.
+
+This is NOT immediately treated as a permanent batch.
+
+The farmer first performs the inspection.
+
+Only after the inspection is completed and the farmer chooses to save it should the relevant information become part of persistent inspection/batch history.
+
+This prevents incomplete or abandoned inspections from unnecessarily becoming permanent records.
+
+---
+
+# 6. Basic Information
+
+Before accessing the camera, the farmer provides minimal information required for the inspection.
+
+The basic information includes:
+
+### Feed/Silage Type
+
+The farmer selects the relevant type.
+
+Known types should be presented as predefined options.
+
+There must also be an:
+
+```text
+Other
+```
+
+option.
+
+When `Other` is selected, the farmer can provide the type manually using text input.
+
+### Storage Duration
+
+The farmer provides how long the material has been stored.
+
+This information is used as contextual information for the inspection.
+
+The system should not ask for unnecessary information at this stage.
+
+---
+
+# 7. Image Capture
+
+After providing basic information, the farmer captures images of the feed/silage.
+
+The image-capture flow should be simple and guided.
+
+The purpose of the images is to provide visual information to the AI analysis system.
+
+The backend must support storing/processing the inspection images according to the finalized implementation architecture.
+
+The system should not claim that an image alone can determine properties that require laboratory testing.
+
+---
+
+# 8. AI Analysis
+
+The AI receives:
+
+* Inspection type
+* Feed/silage type
+* Storage duration
+* Captured images
+* Relevant inspection context
+
+The AI performs visual assessment.
+
+The AI result should be understandable to a farmer rather than being a raw machine-learning output.
+
+The result should communicate:
+
+* Overall visual assessment
+* Important detected visual indicators
+* Confidence where appropriate
+* Potential issues
+* Recommended actions
+
+The system should avoid presenting uncertain predictions as absolute facts.
+
+---
+
+# 9. Visual Assessment vs Laboratory Testing
+
+This is an important product requirement.
+
+PashuChara AI is a visual inspection/decision-support system.
+
+It must not falsely claim that visual AI analysis can replace laboratory testing for properties that require physical or chemical measurement.
+
+Where appropriate, results should communicate that laboratory testing is required for definitive confirmation.
+
+Examples of properties that may require laboratory/physical testing must not be presented as definitively measured by the camera unless an actual validated measurement mechanism exists.
+
+---
+
+# 10. Inspection Result
+
+After AI processing, the farmer receives a clear inspection result.
+
+The result should prioritize actionable information over technical AI terminology.
+
+The result should allow the farmer to understand:
+
+1. What the AI observed.
+2. Whether the material visually appears acceptable or potentially problematic.
+3. What issues may be present.
+4. What action the farmer should consider.
+5. Whether further testing is recommended.
+
+The exact result categories and AI output structure must follow the finalized AI specification and must not be invented by the implementation agent.
+
+---
+
+# 11. Recommendations
+
+Recommendations are connected to the inspection result.
+
+They should be:
+
+* Practical
+* Farmer-friendly
+* Action-oriented
+* Based on the detected condition
+
+Recommendations should not be presented as guaranteed medical, veterinary, chemical, or laboratory conclusions.
+
+The recommendation system should use the finalized project rules and AI output rather than inventing unrelated advice.
+
+---
+
+# 12. Saving an Inspection
+
+An inspection is initially temporary.
+
+After the inspection result is produced, the farmer can save the inspection.
+
+When saved, the inspection becomes persistent historical data.
+
+Persistent information can then be accessed through:
+
+```text
+Inspection History
+```
+
+and, where applicable:
+
+```text
+My Batches
+```
+
+Abandoned or incomplete temporary sessions should not automatically become permanent inspection records.
+
+---
+
+# 13. My Batches
+
+`My Batches` provides access to persistent feed/silage batch information.
+
+A batch represents a persistent real-world quantity of feed or silage that the farmer is managing.
+
+A batch and an inspection are related concepts but are not identical.
+
+A batch can have inspection history associated with it.
+
+The implementation must preserve this distinction rather than treating every inspection session as a batch.
+
+---
+
+# 14. Inspection History
+
+`Inspection History` allows the farmer to access previously saved inspections.
+
+Historical inspections should provide enough information to understand:
+
+* What was inspected
+* When it was inspected
+* The relevant material/type
+* The inspection result
+* Relevant recommendations
+
+The history is persistent application data.
+
+---
+
+# 15. My Farm
+
+`My Farm` represents the farmer's farm-level information.
+
+Farm-related information should be stored separately from individual inspections.
+
+The farm entity should act as the parent context for the farmer's farm-related data according to the finalized database architecture.
+
+Do not add farm fields that have not been specified in the project requirements.
+
+---
+
+# 16. Domain Model
+
+The project is divided into domain-oriented Django applications.
+
+The current backend domain apps are:
+
+```text
+accounts
+farms
+inspections
+batches
+results
+recommendations
+```
+
+Their responsibilities are conceptually separated.
+
+### accounts
+
+Responsible for:
+
+* Farmer/user identity
+* Account-related information
+* Authentication/account domain data
+
+### farms
+
+Responsible for:
+
+* Farmer farm information
+* Farm-level domain data
+
+### inspections
+
+Responsible for:
+
+* Inspection sessions
+* Inspection lifecycle
+* Inspection inputs
+* Inspection metadata
+* Inspection images/context
+
+### batches
+
+Responsible for:
+
+* Persistent feed/silage batches
+* Batch-level information
+* Relationship between batches and inspections where specified
+
+### results
+
+Responsible for:
+
+* AI inspection results
+* Assessment information
+* Confidence/analysis information
+* Result persistence
+
+### recommendations
+
+Responsible for:
+
+* Recommendations associated with inspection results
+* Actionable guidance generated from the inspection
+
+---
+
+# 17. Django Architecture
+
+The backend uses:
+
+```text
+Python
+Django
+Django REST Framework
+PostgreSQL
+Supabase
+```
+
+Supporting infrastructure:
+
+```text
+django-cors-headers
+python-dotenv
+drf-spectacular
+psycopg
+```
+
+Supabase provides the PostgreSQL database.
+
+Django communicates with Supabase PostgreSQL through the PostgreSQL driver.
+
+The application does NOT require a locally running PostgreSQL server for the project database.
+
+---
+
+# 18. Backend Project Structure
+
+The backend follows a domain-oriented Django architecture.
+
+Conceptually:
+
+```text
+backend/
+├── manage.py
+├── config/
+│   ├── settings/
+│   │   ├── base.py
+│   │   ├── development.py
+│   │   └── production.py
+│   ├── urls.py
+│   ├── asgi.py
+│   └── wsgi.py
+│
+├── apps/
+│   ├── accounts/
+│   ├── farms/
+│   ├── inspections/
+│   ├── batches/
+│   ├── results/
+│   └── recommendations/
+│
+└── ...
+```
+
+Each domain app should remain independently responsible for its own domain.
+
+---
+
+# 19. Application Layering
+
+The backend should follow a clear separation of responsibilities.
+
+Where applicable:
+
+```text
+models
+    ↓
+selectors
+    ↓
+services
+    ↓
+serializers
+    ↓
+views/API
+```
+
+General responsibility:
+
+### Models
+
+Represent persistent domain entities and database relationships.
+
+### Selectors
+
+Handle read/query logic.
+
+### Services
+
+Handle business operations and state changes.
+
+### Serializers
+
+Handle API input/output validation and representation.
+
+### Views
+
+Handle HTTP/API concerns.
+
+### Permissions
+
+Handle authorization rules.
+
+Do not place large amounts of business logic directly inside views.
+
+---
+
+# 20. Database
+
+The production database is PostgreSQL hosted through Supabase.
+
+Django should connect using environment variables.
+
+Sensitive credentials must never be committed to Git.
+
+Expected environment configuration includes:
+
+```env
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+```
+
+The actual credentials must remain in `.env`.
+
+`.env` must remain gitignored.
+
+`.env.example` should contain the required variable names without real secrets.
+
+---
+
+# 21. API Architecture
+
+The backend exposes REST APIs through Django REST Framework.
+
+API routes should be organized under:
+
+```text
+/api/
+```
+
+The exact endpoints must be implemented according to the finalized API design.
+
+Do not invent additional endpoints merely for convenience.
+
+Swagger/OpenAPI documentation is provided through drf-spectacular.
+
+A backend health endpoint exists as part of the foundation:
+
+```text
+GET /api/health/
+```
+
+---
+
+# 22. Frontend Architecture
+
+The frontend uses:
+
+```text
+React
+Tailwind CSS
+Vite
+```
+
+The frontend communicates with Django through REST APIs.
+
+Conceptual architecture:
+
+```text
+React
+   ↓
+Django REST API
+   ↓
+Domain Services
+   ↓
+Supabase PostgreSQL
+```
+
+AI processing is kept as a separate concern from the core Django domain layer.
+
+---
+
+# 23. AI Architecture
+
+The repository contains a separate:
+
+```text
+ai/
+```
+
+area for AI-related implementation.
+
+The Django domain layer should not become tightly coupled to model-specific implementation details.
+
+The AI system receives the appropriate inspection context and images and returns structured analysis that the backend can persist and expose through the API.
+
+The exact model/pipeline implementation must follow the finalized AI architecture.
+
+Do not invent an AI model, model provider, dataset, or computer-vision pipeline unless explicitly specified elsewhere.
+
+---
+
+# 24. Security Requirements
+
+Sensitive information must not be committed to Git.
+
+Never commit:
+
+```text
+.env
+database passwords
+API keys
+secret keys
+private credentials
+```
+
+Authentication and authorization must be implemented according to the finalized authentication architecture.
+
+User-owned resources must not be accessible by unauthorized farmers.
+
+API validation must be performed server-side.
+
+---
+
+# 25. Development Principles
+
+The project should be implemented incrementally.
+
+Do NOT implement the entire backend in one step.
+
+Preferred sequence:
+
+```text
+Project foundation
+        ↓
+Domain apps
+        ↓
+Models
+        ↓
+Migrations
+        ↓
+Serializers
+        ↓
+Selectors
+        ↓
+Services
+        ↓
+Permissions
+        ↓
+API views
+        ↓
+URLs
+        ↓
+Tests
+        ↓
+Frontend integration
+        ↓
+AI integration
+```
+
+Each implementation task should be isolated and verified before moving to the next one.
+
+---
+
+# 26. Current Implementation Status
+
+Completed:
+
+* Repository created
+* Backend created
+* Django configured
+* Settings split into base/development/production
+* Environment-based configuration established
+* Supabase PostgreSQL selected
+* Django foundation completed
+* DRF configured
+* CORS configured
+* API documentation configured
+* Health endpoint implemented
+* Domain Django apps created
+* Domain apps registered
+
+Current stage:
+
+```text
+DOMAIN MODEL IMPLEMENTATION
+```
+
+---
+
+# 27. Current Model Implementation Order
+
+Models must be implemented incrementally.
+
+Current planned order:
+
+```text
+1. accounts
+2. farms
+3. inspections
+4. batches
+5. results
+6. recommendations
+```
+
+The order exists to make dependencies easier to manage.
+
+Each model implementation should be completed and checked before moving to the next domain.
+
+---
+
+# 28. Critical Rules for Development Agents
+
+This document is the project's source of truth.
+
+Before implementing anything:
+
+1. Read this document.
+2. Inspect the existing repository.
+3. Preserve existing architecture.
+4. Do not redesign product flows.
+5. Do not add unrequested features.
+6. Do not invent database entities.
+7. Do not invent fields that are not supported by the requirements.
+8. Do not implement multiple unrelated layers in one task.
+9. Do not put business logic into models unless it genuinely belongs there.
+10. Do not put business logic directly into API views.
+11. Do not expose secrets.
+12. Do not change working infrastructure unnecessarily.
+13. Verify changes with Django checks/tests.
+14. Keep changes limited to the requested subproblem.
+
+When a requirement is unclear, inspect the existing project documentation and implementation before making assumptions.
+
+---
+
+# 29. Implementation Philosophy
+
+PashuChara AI should be built as a maintainable production-oriented application, not as a quick prototype with all logic inside a few files.
+
+Priorities:
+
+```text
+Correctness
+   ↓
+Clear domain separation
+   ↓
+Maintainability
+   ↓
+Security
+   ↓
+Testability
+   ↓
+Performance
+```
+
+Avoid premature optimization and unnecessary abstraction.
+
+The goal is a clean system that can evolve as the AI and farmer-facing product mature.
+
+---
+
+# 30. Non-Goals
+
+The following should NOT be introduced unless explicitly requested:
+
+* Unplanned features
+* Unplanned user roles
+* Unplanned domain entities
+* Unplanned AI capabilities
+* Unplanned payment systems
+* Unplanned social/community features
+* Unplanned analytics systems
+* Unplanned notification systems
+* Unplanned infrastructure
+* Arbitrary third-party integrations
+
+Do not expand the product scope during implementation.
+
+---
+
+# 31. Golden Rule
+
+**Implement the finalized PashuChara AI architecture exactly as specified.**
+
+The development agent's job is to implement the project, not redesign it.
+
+When working on a specific task, modify only what is required for that task and leave unrelated parts of the system untouched.

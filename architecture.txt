@@ -1,0 +1,101 @@
+                         HOME
+                           │
+               ┌───────────┴───────────┐
+               ▼                       ▼
+        CHECK SILAGE             CHECK FEED
+               │                       │
+               └───────────┬───────────┘
+                           ▼
+                  BASIC INFORMATION---> clickable or voiceable
+                           │
+                           ▼
+                    GUIDED CAMERA
+                           │
+                ┌──────────┴──────────┐
+                ▼                     ▼
+          QUALITY CHECK             SKIP
+                │                     │
+          ┌─────┴─────┐              │
+          ▼           ▼              │
+        GOOD         BAD             │
+          │           │              │
+       ACCEPT       RETAKE            │
+          │           │              │
+          └─────┬─────┘              │
+                └──────────┬─────────┘
+                           ▼
+                  FARMER QUESTIONS
+                           │
+                ┌──────────┴─────────┐
+                ▼                    ▼
+            Mandatory           Conditional
+                │                  AI
+                └──────────┬─────────┘
+                           ▼
+                  OPTIONAL OBSERVATION
+                           │
+                           ▼
+                ENVIRONMENTAL CONTEXT
+                           │
+                           ▼
+                        ANALYZE
+                           │
+             ┌─────────────┼─────────────┐
+             ▼             ▼             ▼
+          IMAGES        FARMER        CONTEXT
+                         INPUT
+             └─────────────┼─────────────┘
+                           ▼
+                      GEMINI AI
+                           │
+                           ▼
+                STRUCTURED FINDINGS
+                           │
+                           ▼
+                  DJANGO RISK ENGINE
+                           │
+        ┌──────────┬───────┼────────┐
+        ▼          ▼       ▼        ▼
+       LOW      CAUTION   HIGH   UNCERTAIN
+        │          │       │        │
+        ▼          ▼       ▼        ▼
+       Good     Corrective  DO     Retake /
+      practices  actions   NOT     limited
+                           FEED    assessment
+                             │
+                             ▼
+                       ♻️ Waste Path
+                       Companies/NGOs
+                             │
+              ┌──────────────┴─────────────┐
+              ▼                            ▼
+         RECOMMENDATION                DETAILS
+              │
+              └──────────────┬─────────────┘
+                             ▼
+                         SAVE RESULT
+                             │
+                             ▼
+                     AUTO-CREATE BATCH
+                             │
+                    ┌────────┼────────┐
+                    ▼        ▼        ▼
+                 Batch ID    QR     History
+                             │
+                             ▼
+                        MY BATCHES
+                             │
+                             ▼
+                         RE-INSPECT
+                             │
+                             ▼
+                       NEW INSPECTION
+                             │
+                             ▼
+                          COMPARE
+                             │
+                             ▼
+                       QUALITY TREND
+                             │
+                             ▼
+                  RE-INSPECTION ADVISORY
