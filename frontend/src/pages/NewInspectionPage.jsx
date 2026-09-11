@@ -18,6 +18,7 @@ export default function NewInspectionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fodderType = searchParams.get("type") || "silage";
+  const batchId = searchParams.get("batchId");
   const { t, showToast } = useDashboard();
 
   const [inspectionId, setInspectionId] = useState(null);
@@ -94,6 +95,7 @@ export default function NewInspectionPage() {
         materialType: basicInfo.materialType,
         materialTypeOther: basicInfo.materialTypeOther,
         storageDurationDays: Number(basicInfo.storageDurationDays) || 0,
+        batchId: batchId ? Number(batchId) : undefined,
       });
       setInspectionId(inspection.id);
       sessionStorage.setItem("pashuchaara_inspection_id", String(inspection.id));
@@ -177,6 +179,11 @@ export default function NewInspectionPage() {
           />
 
           <form onSubmit={handleCreateInspection} className="my-3 space-y-3 flex-1">
+            {batchId && (
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-[#1a3324] border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                📦 यह पुनः जाँच बैच #{batchId} से जुड़ेगी
+              </div>
+            )}
             <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
               <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
                 जाँच का प्रकार

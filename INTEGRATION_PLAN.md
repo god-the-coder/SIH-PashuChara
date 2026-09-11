@@ -64,32 +64,32 @@ Replaces `InspectionQuestionnairePage`'s fixed 5-question form — the backend g
 - [ ] 6.4 Surface `comparison` (the re-inspection advisory) in the UI when present — **on hold**, depends on 6.3
 - [x] 6.5 Verify (Analyze only): live end-to-end against the real dev server with a real Gemini call — `analyze()` returns a full `Result` (risk category/score/headline/action/summary/recommendations), and correctly flagged plain-color test images as atypical rather than returning canned output. Duplicate-analyze correctly rejected (400), matching the backend's one-result-per-inspection rule. Until 6.3 lands, `InspectionQuestionnairePage` renders a plain temporary raw-data view of the result after analyzing — explicitly not the final report, just proof the pipeline is fully wired for whenever the real report page is ready to plug in. Lint/build clean, 18 pre-existing baseline errors, zero new.
 
-## Phase 7 — Save flow
+## Phase 7 — Save flow ✅
 
-- [ ] 7.1 Add an explicit "Save" action (button/screen) — no current UI calls `POST /api/inspections/{id}/save/`
-- [ ] 7.2 On save, surface the returned `batch` id/`batch_code` (first appearance of batch identity in the UI)
-- [ ] 7.3 Verify: saving attaches/creates a batch, inspection status flips to SAVED
+- [x] 7.1 Explicit "Save" action added to `InspectionQuestionnairePage`'s temporary result view (after Analyze) — `inspectionService.save()` wired to `POST /api/inspections/{id}/save/`
+- [x] 7.2 On save, the returned `batch` id is used to fetch and surface the real `batch_code` (`batchService.getBatch()`, new minimal method — full batch surface still comes in Phase 9); `sessionStorage`'s inspection-id handoff is cleared once saved
+- [x] 7.3 Verify: live end-to-end — save flips status DRAFT→SAVED and attaches a batch, the real `batch_code` (`PC-XXXXXXXX`) is fetched and displayed, duplicate save correctly rejected (400). Lint/build clean, 18 pre-existing baseline errors, zero new.
 
-## Phase 8 — History
+## Phase 8 — History ✅
 
-- [ ] 8.1 `historyService`: wired to `GET /api/inspections/?status=SAVED`
-- [ ] 8.2 Rebuild `HistoryPage` off the real list (the existing `silage`/`feed` filter maps directly to `InspectionType`, keep it)
-- [ ] 8.3 Verify: only SAVED inspections appear, clicking one opens its real result
+- [x] 8.1 `historyService`: `listSaved()` wired to `GET /api/inspections/?status=SAVED`, `getResult()` wired to `GET /api/results/{id}/`
+- [x] 8.2 `HistoryPage` rebuilt off the real list — filter pills now match `inspection_type` directly (SILAGE/FEED); since the real report page (Phase 6.3) is on hold, clicking a card expands an inline raw summary (risk category/headline/summary) fetched on demand, rather than navigating to the still-mock `ResultsPage`
+- [x] 8.3 Verify: live — only the SAVED inspection appears in the list, the DRAFT one is excluded; fetching a result for a not-yet-analyzed SAVED inspection correctly 404s and the UI shows a graceful "no analysis yet" fallback instead of erroring. Lint/build clean, 18 pre-existing baseline errors, zero new.
 
-## Phase 9 — Batches + QR
+## Phase 9 — Batches + QR ✅
 
-- [ ] 9.1 **Decision**: drop `BatchesPage`'s manual "+ नया बैच" add-batch form — batches are backend-auto-created on save, not manually created by farmers. Confirm before removing.
-- [ ] 9.2 `batchService`: `list()`, `get()`, `update()`, `getTrend()`, `getQrPng()`, `resolveByCode()` wired to the full `/api/batches/*` surface
-- [ ] 9.3 Rebuild `BatchesPage` off real batches; add QR display (post-save) and a scan/enter-code re-inspect entry point
-- [ ] 9.4 Wire "re-inspect" to `POST /api/inspections/` with `batch_id`, feeding back into Phase 4's flow
-- [ ] 9.5 Surface batch trend (`is_increasing`, `insight`) somewhere on the batch detail view
-- [ ] 9.6 Verify: scan/enter a real batch_code → summary with latest result shown → re-inspect → new result includes a comparison against the previous one
+- [x] 9.1 **Decision**: dropped `BatchesPage`'s manual "+ नया बैच" add-batch form entirely — batches only ever appear after a real inspection is saved against them
+- [x] 9.2 `batchService`: `list()`, `getBatch()`, `updateBatch()`, `getTrend()`, `getQrObjectUrl()`, `resolveByCode()` wired to the full `/api/batches/*` surface. QR is fetched as a credentialed blob (`responseType: 'blob'` → `URL.createObjectURL`) rather than a plain `<img src>` — a direct cross-origin `<img>` tag would drop the session cookie under `SameSite=Lax` and 403.
+- [x] 9.3 `BatchesPage` rebuilt off real batches — each card shows label/type/material/quantity/batch_code with QR-reveal and trend-reveal toggles; a "resolve by code" form at the top lets a farmer type/scan a `batch_code` and see the batch summary + latest result before re-inspecting
+- [x] 9.4 "Re-inspect" wired — `NewInspectionPage` now reads an optional `batchId` query param and passes it through to `create()`'s `batch_id`, both from `BatchesPage`'s per-card "जाँचें" button and the resolve-by-code flow
+- [x] 9.5 Batch trend (`is_increasing`, `insight`) surfaced per-batch via a toggle on each card
+- [x] 9.6 Verify: live end-to-end — batch appears in `list()` after save, QR endpoint returns a genuine PNG (verified magic bytes + content-type), trend fetch works, `updateBatch()` (quantity) persists, `resolveByCode()` finds the real batch and correctly 404s→null for an unknown code. Lint/build clean, 18 pre-existing baseline errors, zero new. (The re-inspection → comparison end-to-end check is deferred along with Phase 6.3/6.4 — comparison only surfaces through the `Result` shape, which isn't rendered anywhere yet since the report page is on hold.)
 
-## Phase 10 — End-to-end QA pass
+## Phase 10 — End-to-end QA pass (partially complete)
 
-- [ ] 10.1 Full manual walkthrough: register → login → create farm → new inspection → questions → analyze → save → history → batch → QR → re-inspect → comparison
-- [ ] 10.2 Confirm no page still reads from `sessionStorage`/hardcoded mock data for anything now backed by a real endpoint
-- [ ] 10.3 Cross-browser/session check: two different logged-in farmers cannot see each other's farms/inspections/batches from the UI
+- [ ] 10.1 Full manual click-through walkthrough — **not completed**: this session has no working Browser tool (a naming-conflict error blocks it every attempt), so every phase above was instead verified with scripted HTTP calls that exactly mirror each service method's request/response contract, plus lint/build checks. That's real proof the wiring is correct, but it is not the same as clicking through the actual rendered UI. Worth doing manually from your machine before considering the integration done.
+- [x] 10.2 Audited every page for leftover mock/`sessionStorage` reads: only `ResultsPage.jsx` still reads stale keys (`pashuchaara_temp_images`/`pashuchaara_temp_type`) — expected and correct, since that page's rebuild (Phase 6.3) is deliberately on hold. `NewInspectionPage` no longer writes those keys at all (writes the real `pashuchaara_inspection_id` instead), so `ResultsPage` is now unambiguously 100% mock with no fake real-looking data leaking in. Every other page (Farm, History, Batches, Questionnaire) reads only from real service calls now.
+- [x] 10.3 Cross-user isolation — verified via the existing backend test suite rather than a new check: 13 dedicated cross-owner-denial tests already exist and pass across `accounts`/`farms`/`inspections`/`results`/`batches` (e.g. `test_other_user_cannot_access_batch`, `test_farms_are_isolated_per_owner`, `test_resolve_by_code_denies_other_user`). This is the layer that actually enforces isolation — the frontend has no separate access-control logic, so real backend coverage is the correct place to prove this, not a UI-level re-test. Full suite: **151/151 passing**.
 
 ---
 
