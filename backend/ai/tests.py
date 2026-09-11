@@ -117,6 +117,31 @@ class ClassifyRiskTests(SimpleTestCase):
         self.assertEqual(result['risk_category'], 'LOW')
         self.assertTrue(result['requires_lab_testing'])
 
+    def test_worsening_trend_escalates_one_level(self):
+        result = classify_risk({'confidence': 90, 'indicators': [{'severity': 'mild'}]}, history=[10])
+        self.assertEqual(result['risk_category'], 'CAUTION')
+        self.assertTrue(result['trend_escalated'])
+
+    def test_high_is_not_escalated_further(self):
+        result = classify_risk({'confidence': 90, 'indicators': [{'severity': 'severe'}]}, history=[50])
+        self.assertEqual(result['risk_category'], 'HIGH')
+        self.assertFalse(result['trend_escalated'])
+
+    def test_improving_trend_does_not_escalate(self):
+        result = classify_risk({'confidence': 90, 'indicators': [{'severity': 'mild'}]}, history=[80])
+        self.assertEqual(result['risk_category'], 'LOW')
+        self.assertFalse(result['trend_escalated'])
+
+    def test_no_history_does_not_escalate(self):
+        result = classify_risk({'confidence': 90, 'indicators': [{'severity': 'mild'}]}, history=[])
+        self.assertEqual(result['risk_category'], 'LOW')
+        self.assertFalse(result['trend_escalated'])
+
+    def test_uncertain_unaffected_by_history(self):
+        result = classify_risk({'confidence': 20, 'indicators': [{'severity': 'severe'}]}, history=[10])
+        self.assertEqual(result['risk_category'], 'UNCERTAIN')
+        self.assertFalse(result['trend_escalated'])
+
     def test_action_label_matches_category(self):
         self.assertEqual(classify_risk({'confidence': 90, 'indicators': []})['action_label'], 'Good practices')
         self.assertEqual(

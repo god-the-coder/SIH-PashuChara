@@ -11,6 +11,8 @@ these to be refined once real domain/veterinary review is available.
 
 SEVERITY_WEIGHTS = {'none': 0, 'mild': 25, 'moderate': 55, 'severe': 90}
 
+_CATEGORY_ESCALATION_ORDER = ['LOW', 'CAUTION', 'HIGH']
+
 ACTION_LABELS = {
     'LOW': 'Good practices',
     'CAUTION': 'Corrective actions',
@@ -43,7 +45,8 @@ _DEFAULT_RECOMMENDATIONS = {
 }
 
 
-def classify_risk(findings):
+def classify_risk(findings, history=None):
+    """history: prior risk_score values for the same batch, chronological (oldest first)."""
     indicators = findings.get('indicators') or []
     confidence = findings.get('confidence')
     confidence = 0 if confidence is None else confidence
@@ -58,22 +61,35 @@ def classify_risk(findings):
         item.get('verify_only') for item in indicators
     )
 
+    trend_escalated = False
+
     if confidence < 50:
         risk_category = 'UNCERTAIN'
         requires_lab_testing = True
-    elif risk_score >= 70:
-        risk_category = 'HIGH'
-        requires_lab_testing = True
-    elif risk_score >= 35:
-        risk_category = 'CAUTION'
     else:
-        risk_category = 'LOW'
+        if risk_score >= 70:
+            risk_category = 'HIGH'
+        elif risk_score >= 35:
+            risk_category = 'CAUTION'
+        else:
+            risk_category = 'LOW'
+
+        most_recent_prior = history[-1] if history else None
+        current_index = _CATEGORY_ESCALATION_ORDER.index(risk_category)
+        can_escalate = current_index < len(_CATEGORY_ESCALATION_ORDER) - 1
+        if most_recent_prior is not None and risk_score > most_recent_prior and can_escalate:
+            trend_escalated = True
+            risk_category = _CATEGORY_ESCALATION_ORDER[current_index + 1]
+
+        if risk_category == 'HIGH':
+            requires_lab_testing = True
 
     return {
         'risk_category': risk_category,
         'risk_score': risk_score,
         'action_label': ACTION_LABELS[risk_category],
         'requires_lab_testing': requires_lab_testing,
+        'trend_escalated': trend_escalated,
     }
 
 

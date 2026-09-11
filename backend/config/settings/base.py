@@ -159,3 +159,6 @@ SPECTACULAR_SETTINGS = {
 # Gemini AI (visual inspection analysis)
 GEMINI_KEY = os.getenv('GEMINI_KEY', '')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+
+# OpenWeatherMap (inspection environmental context)
+OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')

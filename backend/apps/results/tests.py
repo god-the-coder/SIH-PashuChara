@@ -114,6 +114,42 @@ class AnalyzeInspectionServiceTests(TestCase):
         image.image.delete(save=False)
 
     @patch('apps.results.services.analyze_material')
+    def test_analyze_inspection_passes_batch_history_to_risk_engine(self, mock_analyze):
+        from apps.batches.services import ensure_batch_for_inspection
+
+        mock_analyze.side_effect = [
+            {'summary': 'ok', 'headline': 'fine', 'confidence': 90, 'indicators': [{'severity': 'none'}]},
+            {'summary': 'worse', 'headline': 'mild concern', 'confidence': 90, 'indicators': [{'severity': 'mild'}]},
+        ]
+
+        first_inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        image1 = add_inspection_image(inspection=first_inspection, image=make_test_image())
+        first_result = analyze_inspection(inspection=first_inspection)
+        self.assertEqual(first_result.risk_category, RiskCategory.LOW)
+        self.assertEqual(first_result.risk_score, 0)
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+
+        second_inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=20,
+        )
+        second_inspection.batch = batch
+        second_inspection.save(update_fields=['batch'])
+        image2 = add_inspection_image(inspection=second_inspection, image=make_test_image())
+
+        # Second inspection scores higher than the first on the same batch, so the
+        # Risk Engine should escalate it one level beyond its own raw LOW threshold.
+        second_result = analyze_inspection(inspection=second_inspection)
+        self.assertEqual(second_result.risk_score, 25)
+        self.assertEqual(second_result.risk_category, RiskCategory.CAUTION)
+
+        image1.image.delete(save=False)
+        image2.image.delete(save=False)
+
+    @patch('apps.results.services.analyze_material')
     def test_analyze_inspection_rejects_duplicate(self, mock_analyze):
         mock_analyze.return_value = {
             'summary': 'ok', 'headline': 'fine', 'confidence': 90, 'indicators': [],

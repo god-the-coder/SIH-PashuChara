@@ -6,7 +6,7 @@ from apps.inspections.services import read_inspection_images
 from apps.recommendations.services import create_recommendation
 
 from .models import Result
-from .selectors import get_result_by_inspection
+from .selectors import get_result_by_inspection, list_results_by_batch
 
 
 def analyze_inspection(*, inspection):
@@ -23,10 +23,23 @@ def analyze_inspection(*, inspection):
         material_type_other=inspection.material_type_other,
         storage_duration_days=inspection.storage_duration_days,
         followup_qa=inspection.followup_qa,
+        storage_condition=inspection.storage_condition,
+        moisture_exposure=inspection.moisture_exposure,
+        farmer_observation=inspection.farmer_observation,
+        temperature_celsius=inspection.temperature_celsius,
+        humidity_percent=inspection.humidity_percent,
         images=images,
     )
 
-    risk = classify_risk(findings)
+    history = []
+    if inspection.batch_id:
+        history = [
+            result.risk_score
+            for result in list_results_by_batch(batch=inspection.batch)
+            if result.risk_score is not None
+        ]
+
+    risk = classify_risk(findings, history=history)
 
     result = record_result(
         inspection=inspection,

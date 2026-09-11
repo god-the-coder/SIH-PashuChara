@@ -9,8 +9,9 @@ from rest_framework.test import APIClient
 
 from ai.exceptions import AIServiceError
 from apps.accounts.models import User
+from weather.exceptions import WeatherServiceError
 
-from .models import InspectionStatus, InspectionType, MaterialType
+from .models import ImageType, InspectionStatus, InspectionType, MaterialType, StorageCondition
 from .permissions import IsInspectionOwner
 from .selectors import get_inspection_by_id, list_images_by_inspection, list_inspections_by_owner
 from .services import (
@@ -19,6 +20,7 @@ from .services import (
     generate_followup_questions,
     save_inspection,
     submit_followup_answers,
+    update_inspection_context,
 )
 
 
@@ -187,6 +189,31 @@ class InspectionApiTests(TestCase):
         response = self.client.get(f'/api/inspections/{inspection_id}/')
         self.assertEqual(response.status_code, 403)
 
+    def test_image_upload_defaults_to_front_general_type(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        inspection_id = response.data['id']
+
+        response = self.client.post(
+            f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart',
+        )
+        self.assertEqual(response.data['image_type'], 'FRONT_GENERAL')
+
+    def test_image_upload_accepts_explicit_type(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        inspection_id = response.data['id']
+
+        response = self.client.post(
+            f'/api/inspections/{inspection_id}/images/',
+            {'image': make_test_image(), 'image_type': 'MACRO'}, format='multipart',
+        )
+        self.assertEqual(response.data['image_type'], 'MACRO')
+
     def test_invalid_image_upload_rejected(self):
         self.client.force_authenticate(user=self.owner)
         response = self.client.post('/api/inspections/', {
@@ -267,6 +294,51 @@ class FollowupQuestionServiceTests(TestCase):
         image.image.delete(save=False)
 
 
+class UpdateInspectionContextServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876540010', full_name='Owner', password='StrongPass123',
+        )
+        self.inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+
+    @patch('apps.inspections.services.fetch_current_weather')
+    def test_updates_farmer_fields_and_fetches_weather(self, mock_weather):
+        mock_weather.return_value = {'temperature_celsius': 31.0, 'humidity_percent': 74.0}
+
+        update_inspection_context(
+            inspection=self.inspection, latitude=19.9975, longitude=73.7898,
+            storage_condition=StorageCondition.POOR, moisture_exposure=True,
+            farmer_observation='Unusual smell noticed',
+        )
+
+        self.assertEqual(self.inspection.temperature_celsius, 31.0)
+        self.assertEqual(self.inspection.humidity_percent, 74.0)
+        self.assertEqual(self.inspection.storage_condition, StorageCondition.POOR)
+        self.assertTrue(self.inspection.moisture_exposure)
+        self.assertEqual(self.inspection.farmer_observation, 'Unusual smell noticed')
+
+    @patch('apps.inspections.services.fetch_current_weather')
+    def test_weather_failure_does_not_block_other_fields(self, mock_weather):
+        mock_weather.side_effect = WeatherServiceError('provider down')
+
+        update_inspection_context(
+            inspection=self.inspection, latitude=19.9975, longitude=73.7898,
+            farmer_observation='test note',
+        )
+
+        self.assertIsNone(self.inspection.temperature_celsius)
+        self.assertEqual(self.inspection.latitude, 19.9975)
+        self.assertEqual(self.inspection.farmer_observation, 'test note')
+
+    def test_rejects_when_not_draft(self):
+        save_inspection(inspection=self.inspection)
+        with self.assertRaises(ValidationError):
+            update_inspection_context(inspection=self.inspection, farmer_observation='too late')
+
+
 class AIEndpointApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -312,3 +384,23 @@ class AIEndpointApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['risk_category'], 'LOW')
         self.assertEqual(len(response.data['recommendations']), 1)
+
+    @patch('apps.inspections.services.fetch_current_weather')
+    def test_context_endpoint_updates_inspection(self, mock_weather):
+        mock_weather.return_value = {'temperature_celsius': 31.0, 'humidity_percent': 74.0}
+
+        response = self.client.patch(f'/api/inspections/{self.inspection_id}/context/', {
+            'latitude': 19.9975, 'longitude': 73.7898, 'storage_condition': 'POOR',
+            'moisture_exposure': True, 'farmer_observation': 'Unusual smell noticed',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['temperature_celsius'], 31.0)
+        self.assertEqual(response.data['storage_condition'], 'POOR')
+        self.assertEqual(response.data['farmer_observation'], 'Unusual smell noticed')
+
+    def test_context_endpoint_rejects_lat_without_lon(self):
+        response = self.client.patch(
+            f'/api/inspections/{self.inspection_id}/context/', {'latitude': 19.9975}, format='json',
+        )
+        self.assertEqual(response.status_code, 400)

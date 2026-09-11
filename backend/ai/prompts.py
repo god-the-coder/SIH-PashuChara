@@ -25,7 +25,11 @@ def build_followup_questions_prompt(*, inspection_type, material_type, material_
     )
 
 
-def build_analysis_prompt(*, inspection_type, material_type, material_type_other, storage_duration_days, followup_qa):
+def build_analysis_prompt(
+    *, inspection_type, material_type, material_type_other, storage_duration_days, followup_qa,
+    storage_condition=None, moisture_exposure=None, farmer_observation=None,
+    temperature_celsius=None, humidity_percent=None,
+):
     context = _context_block(
         inspection_type=inspection_type, material_type=material_type,
         material_type_other=material_type_other, storage_duration_days=storage_duration_days,
@@ -35,13 +39,26 @@ def build_analysis_prompt(*, inspection_type, material_type, material_type_other
         qa_lines = '\n'.join(f'Q: {item.get("question", "")}\nA: {item.get("answer", "")}' for item in followup_qa)
         qa_block = f'\nFarmer-provided answers to follow-up questions:\n{qa_lines}\n'
 
+    extra_context_lines = []
+    if storage_condition:
+        extra_context_lines.append(f'Farmer-reported storage condition: {storage_condition}')
+    if moisture_exposure is not None:
+        extra_context_lines.append(f'Farmer-reported moisture exposure: {"Yes" if moisture_exposure else "No"}')
+    if farmer_observation:
+        extra_context_lines.append(f'Farmer observation: {farmer_observation}')
+    if temperature_celsius is not None:
+        extra_context_lines.append(f'Ambient temperature: {temperature_celsius}°C')
+    if humidity_percent is not None:
+        extra_context_lines.append(f'Ambient humidity: {humidity_percent}%')
+    extra_context_block = ('\n'.join(extra_context_lines) + '\n') if extra_context_lines else ''
+
     return (
         'You are the visual-assessment component of a farmer-facing app that screens animal feed and silage '
         'for visible quality and safety concerns. You are NOT performing laboratory analysis, and must not '
         'claim certainty about anything that requires physical or chemical testing (nutritional composition, '
         'pH, aflatoxins, mycotoxins, urea adulteration). Frame those as reference-based estimates or flag them '
         'as requiring verification.\n\n'
-        f'{context}{qa_block}\n'
+        f'{context}{qa_block}{extra_context_block}\n'
         'Examine the attached photos and respond with ONLY a JSON object of this exact shape (no other text):\n'
         '{\n'
         '  "summary": "1-2 plain-language sentences a farmer can understand",\n'

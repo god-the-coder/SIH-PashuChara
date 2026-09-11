@@ -4,8 +4,10 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from ai.client import generate_followup_questions as ai_generate_followup_questions
+from weather.client import fetch_current_weather
+from weather.exceptions import WeatherServiceError
 
-from .models import Inspection, InspectionImage, InspectionStatus, MaterialType
+from .models import ImageType, Inspection, InspectionImage, InspectionStatus, MaterialType
 
 
 def create_draft_inspection(*, owner, inspection_type, material_type, storage_duration_days, material_type_other=''):
@@ -24,11 +26,11 @@ def create_draft_inspection(*, owner, inspection_type, material_type, storage_du
     return inspection
 
 
-def add_inspection_image(*, inspection, image):
+def add_inspection_image(*, inspection, image, image_type=ImageType.FRONT_GENERAL):
     if inspection.status != InspectionStatus.DRAFT:
         raise ValidationError('Cannot add images to an inspection that is not in draft.')
 
-    return InspectionImage.objects.create(inspection=inspection, image=image)
+    return InspectionImage.objects.create(inspection=inspection, image=image, image_type=image_type)
 
 
 def save_inspection(*, inspection):
@@ -38,6 +40,49 @@ def save_inspection(*, inspection):
     inspection.status = InspectionStatus.SAVED
     inspection.saved_at = timezone.now()
     inspection.save(update_fields=['status', 'saved_at'])
+    return inspection
+
+
+def update_inspection_context(
+    *, inspection, latitude=None, longitude=None, storage_condition=None,
+    moisture_exposure=None, farmer_observation=None,
+):
+    if inspection.status != InspectionStatus.DRAFT:
+        raise ValidationError('Inspection context can only be updated while in draft.')
+
+    update_fields = []
+
+    if latitude is not None and longitude is not None:
+        inspection.latitude = latitude
+        inspection.longitude = longitude
+        update_fields += ['latitude', 'longitude']
+
+        try:
+            weather = fetch_current_weather(latitude=latitude, longitude=longitude)
+            inspection.temperature_celsius = weather['temperature_celsius']
+            inspection.humidity_percent = weather['humidity_percent']
+            update_fields += ['temperature_celsius', 'humidity_percent']
+        except WeatherServiceError:
+            # Weather is enrichment, not a hard requirement — the farmer should
+            # never be blocked from proceeding because a third-party API failed.
+            pass
+
+    if storage_condition is not None:
+        inspection.storage_condition = storage_condition
+        update_fields.append('storage_condition')
+
+    if moisture_exposure is not None:
+        inspection.moisture_exposure = moisture_exposure
+        update_fields.append('moisture_exposure')
+
+    if farmer_observation is not None:
+        inspection.farmer_observation = farmer_observation
+        update_fields.append('farmer_observation')
+
+    if update_fields:
+        inspection.full_clean()
+        inspection.save(update_fields=update_fields)
+
     return inspection
 
 

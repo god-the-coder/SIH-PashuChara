@@ -18,4 +18,5 @@ class InspectionAdmin(admin.ModelAdmin):
 
 @admin.register(InspectionImage)
 class InspectionImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'inspection', 'uploaded_at')
+    list_display = ('id', 'inspection', 'image_type', 'uploaded_at')
+    list_filter = ('image_type',)

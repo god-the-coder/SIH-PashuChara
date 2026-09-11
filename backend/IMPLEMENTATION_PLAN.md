@@ -106,12 +106,15 @@ Spec finalized against real UI mockups (detailed inspection report + quick resul
 - [x] 8.5 Views & URLs — `POST /api/inspections/{id}/questions/`, `POST /api/inspections/{id}/questions/answer/`, `POST /api/inspections/{id}/analyze/`. Full HTTP flow verified live end-to-end (create → image → questions → answer → analyze → result), including one-result-per-inspection and cross-owner rejection
 - [x] 8.6 Tests — 27 new tests (risk engine, mocked AI client, mocked service orchestration, mocked view flow); 90/90 total passing, zero real network calls in the suite
 
-## Phase 9 — Extended inspection input (small, follow-up to Phase 8)
+## Phase 9 — Extended inspection context, weather, and trend-aware Risk Engine
 
-Farmer-provided data needed for the "Storage & Environment" / "Farmer Information" report sections.
+Farmer-provided + weather data for the "Storage & Environment" / "Farmer Information" report sections, plus feeding batch history into the Risk Engine's actual decision (per the user's Risk Engine input diagram: visual evidence + farmer observations + temperature + humidity + storage duration + storage condition + historical observations → risk score + confidence → action).
 
-- [ ] 9.1 `Inspection`: `temperature_celsius`, `humidity_percent`, `storage_condition`, `moisture_exposure`, `farmer_observation` (all optional)
-- [ ] 9.2 `InspectionImage`: `image_type` (FRONT/SIDE/MACRO/STORAGE)
+- [x] 9.1 Model additions — `Inspection`: `latitude`, `longitude`, `temperature_celsius`, `humidity_percent`, `storage_condition` (GOOD/FAIR/POOR), `moisture_exposure`, `farmer_observation` (all nullable/optional); `InspectionImage`: `image_type` (FRONT_GENERAL/SIDE_DEPTH/MACRO/STORAGE, default FRONT_GENERAL). Migration applied, admin updated, verified.
+- [x] 9.2 `backend/weather/` package — `fetch_current_weather(latitude, longitude)` via OpenWeatherMap (`OPENWEATHER_KEY`). Verified live against the real API; fixed an error-message key leak found during testing (requests embeds the API key in its exception text — now redacted)
+- [x] 9.3 Services — `update_inspection_context` (farmer fields + weather fetch, failure-tolerant); `add_inspection_image` gains `image_type`; `classify_risk` gains `history` param with one-level trend escalation (capped at HIGH, excluded for UNCERTAIN); `list_results_by_batch` selector; `analyze_inspection` gathers batch history + passes storage_condition/moisture_exposure/farmer_observation/temperature/humidity into the Gemini prompt. Verified live end-to-end across two inspections on the same batch (90/90 existing tests still pass).
+- [x] 9.4 Serializers/Views — `PATCH /api/inspections/{id}/context/` (lat/lon-together validation, weather-failure-tolerant); `image_type` on `POST /api/inspections/{id}/images/`. Verified over HTTP, including the real weather fetch working end-to-end after the key was updated.
+- [x] 9.5 Tests — 18 new tests (weather client incl. key-leak regression guard, Risk Engine trend escalation, context service/endpoint, image_type); 108/108 total passing, zero real network calls in the suite
 
 ## Phase 10 — Batch risk trend (small, follow-up to Phase 8)
 

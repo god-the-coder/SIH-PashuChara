@@ -14,13 +14,20 @@ from apps.results.services import analyze_inspection
 from .models import Inspection
 from .permissions import IsInspectionOwner
 from .selectors import list_inspections_by_owner
-from .serializers import CreateInspectionSerializer, FollowupAnswersSerializer, InspectionImageSerializer, InspectionSerializer
+from .serializers import (
+    CreateInspectionSerializer,
+    FollowupAnswersSerializer,
+    InspectionContextSerializer,
+    InspectionImageSerializer,
+    InspectionSerializer,
+)
 from .services import (
     add_inspection_image,
     create_draft_inspection,
     generate_followup_questions,
     save_inspection,
     submit_followup_answers,
+    update_inspection_context,
 )
 
 
@@ -63,11 +70,29 @@ class InspectionImageUploadView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            image = add_inspection_image(inspection=inspection, image=serializer.validated_data['image'])
+            image = add_inspection_image(inspection=inspection, **serializer.validated_data)
         except DjangoValidationError as exc:
             raise ValidationError(exc.messages)
 
         return Response(InspectionImageSerializer(image).data, status=status.HTTP_201_CREATED)
+
+
+class InspectionContextView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    def patch(self, request, pk):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        serializer = InspectionContextSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            inspection = update_inspection_context(inspection=inspection, **serializer.validated_data)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+
+        return Response(InspectionSerializer(inspection).data)
 
 
 class InspectionSaveView(APIView):
