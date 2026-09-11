@@ -14,8 +14,7 @@ import { ROUTES } from '../constants/routes'
 
 function NotFoundPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center py-12">
-      <Container size="sm">
+    <Container size="sm">
         <Card className="text-center">
           <CardHeader className="text-center items-center">
             <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-xs">
@@ -41,8 +40,7 @@ function NotFoundPage() {
             </Stack>
           </CardContent>
         </Card>
-      </Container>
-    </main>
+    </Container>
   )
 }
 

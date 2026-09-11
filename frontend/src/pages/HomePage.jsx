@@ -12,13 +12,11 @@ import {
   Button,
   Badge,
 } from '../components'
-import { API_BASE_URL } from '../constants/env'
 import { ROUTES } from '../constants/routes'
 
 function HomePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center py-12">
-      <Container size="sm">
+    <Container size="sm">
         <Card>
           <CardHeader className="text-center items-center">
             <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 shadow-xs">
@@ -51,13 +49,9 @@ function HomePage() {
             <Badge variant="brand" dot icon={<Sparkles className="w-3 h-3 mr-1" />}>
               Responsive Layout Ready
             </Badge>
-            <span className="text-[11px] text-slate-400 font-mono">
-              API: {API_BASE_URL}
-            </span>
           </CardFooter>
         </Card>
-      </Container>
-    </main>
+    </Container>
   )
 }
 
