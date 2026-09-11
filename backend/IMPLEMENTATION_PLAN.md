@@ -140,6 +140,16 @@ Closed three gaps found when comparing implementation against `project_explain.t
 - [x] 12.2 Added `LoginSerializer` (accounts) and `BatchTrendPointSerializer`/`BatchTrendSerializer` (results) purely for schema description of previously-undocumented shapes
 - [x] 12.3 Verified: `manage.py spectacular --fail-on-warn` exits 0 with zero warnings; full suite still 132/132 passing
 
+## Phase 13 — Batch QR codes and re-inspection advisory
+
+Closes the two remaining architecture.txt-only items, now confirmed as real requirements: the QR-based "scan to re-inspect" flow, and a "Re-inspection Advisory" that compares a new inspection's result against the batch's most recent prior SAVED result (risk category/score + confidence deltas), surfaced automatically wherever a `Result` is returned.
+
+- [x] 13.1 `Batch.batch_code` (unique, `PC-XXXXXXXX` format via `secrets`), migration applied; `create_batch_from_inspection` assigns one on every batch
+- [x] 13.2 `generate_batch_qr_png(batch)` using the `qrcode[pil]` package — encodes the bare `batch_code` (confirmed with the user, not a deep-link URL); `GET /api/batches/{id}/qr/` streams the PNG, owner-only
+- [x] 13.3 `get_batch_by_code` selector + `GET /api/batches/by-code/{batch_code}/` (resolve → authorize via `IsBatchOwner` → `BatchSummarySerializer`, which nests the latest SAVED result per the user's confirmed shape)
+- [x] 13.4 `build_result_comparison(result)` — deterministic (no AI call) comparison against the batch's previous SAVED result; wired into `ResultSerializer.comparison` so it appears automatically on both the analyze response and `GET /api/results/{id}/` whenever the inspection's batch has prior history
+- [x] 13.5 Tests — new service/selector/API tests across `batches` and `results`; live-verified batch_code generation, QR PNG bytes, and code resolution against the real dev DB; full suite passing
+
 ---
 
 ## Notes

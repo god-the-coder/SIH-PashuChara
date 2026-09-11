@@ -9,8 +9,8 @@ from apps.inspections.models import InspectionType, MaterialType
 from apps.inspections.services import add_inspection_image, create_draft_inspection, save_inspection
 
 from .permissions import IsBatchOwner
-from .selectors import get_batch_by_id, list_batches_by_owner
-from .services import create_batch_from_inspection, ensure_batch_for_inspection, update_batch
+from .selectors import get_batch_by_code, get_batch_by_id, list_batches_by_owner
+from .services import create_batch_from_inspection, ensure_batch_for_inspection, generate_batch_qr_png, update_batch
 
 
 def make_test_image():
@@ -48,6 +48,10 @@ class BatchSelectorTests(TestCase):
         self.assertEqual(list(list_batches_by_owner(owner=self.owner)), [self.batch])
         self.assertEqual(list(list_batches_by_owner(owner=other)), [])
 
+    def test_get_batch_by_code_found_and_missing(self):
+        self.assertEqual(get_batch_by_code(batch_code=self.batch.batch_code), self.batch)
+        self.assertIsNone(get_batch_by_code(batch_code='PC-NOTFOUND'))
+
 
 class BatchServiceTests(TestCase):
     def setUp(self):
@@ -80,6 +84,18 @@ class BatchServiceTests(TestCase):
         batch.refresh_from_db()
         self.assertEqual(batch.quantity_kg, 150)
         self.assertEqual(batch.batch_label, f'Batch #{batch.pk}')
+
+    def test_create_batch_from_inspection_assigns_unique_code(self):
+        batch_one = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        batch_two = create_batch_from_inspection(inspection=make_inspection(self.owner))
+
+        self.assertTrue(batch_one.batch_code.startswith('PC-'))
+        self.assertNotEqual(batch_one.batch_code, batch_two.batch_code)
+
+    def test_generate_batch_qr_png_returns_valid_png_bytes(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        png_bytes = generate_batch_qr_png(batch=batch)
+        self.assertTrue(png_bytes.startswith(b'\x89PNG'))
 
 
 class IsBatchOwnerPermissionTests(TestCase):
@@ -190,3 +206,64 @@ class BatchApiTests(TestCase):
 
         response = self.client.get(f'/api/batches/{batch.pk}/trend/')
         self.assertEqual(response.status_code, 403)
+
+    def test_qr_endpoint_returns_png(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get(f'/api/batches/{batch.pk}/qr/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/png')
+        self.assertTrue(response.content.startswith(b'\x89PNG'))
+
+    def test_qr_endpoint_denies_other_user(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.get(f'/api/batches/{batch.pk}/qr/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_resolve_by_code_returns_summary_with_latest_result(self):
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 10,
+        }, format='json')
+        inspection_id = response.data['id']
+        self.client.post(f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart')
+
+        with patch('apps.results.services.analyze_material') as mock_analyze:
+            mock_analyze.return_value = {
+                'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+            }
+            self.client.post(f'/api/inspections/{inspection_id}/analyze/')
+
+        response = self.client.post(f'/api/inspections/{inspection_id}/save/')
+        batch_id = response.data['batch']
+        batch_code = get_batch_by_id(batch_id=batch_id).batch_code
+
+        response = self.client.get(f'/api/batches/by-code/{batch_code}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], batch_id)
+        self.assertIsNotNone(response.data['latest_result'])
+        self.assertEqual(response.data['latest_result']['headline'], 'Normal')
+
+    def test_resolve_by_code_returns_none_when_no_result_yet(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.get(f'/api/batches/by-code/{batch.batch_code}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data['latest_result'])
+
+    def test_resolve_by_code_denies_other_user(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.get(f'/api/batches/by-code/{batch.batch_code}/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_resolve_by_code_unknown_code_returns_404(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get('/api/batches/by-code/PC-NOTFOUND/')
+        self.assertEqual(response.status_code, 404)

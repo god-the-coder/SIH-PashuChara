@@ -1,5 +1,7 @@
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,9 +11,9 @@ from apps.results.services import build_batch_trend
 
 from .models import Batch
 from .permissions import IsBatchOwner
-from .selectors import list_batches_by_owner
-from .serializers import BatchSerializer
-from .services import update_batch
+from .selectors import get_batch_by_code, list_batches_by_owner
+from .serializers import BatchSerializer, BatchSummarySerializer
+from .services import generate_batch_qr_png, update_batch
 
 
 class BatchListView(APIView):
@@ -53,3 +55,31 @@ class BatchTrendView(APIView):
         self.check_object_permissions(request, batch)
 
         return Response(build_batch_trend(batch=batch))
+
+
+class BatchQRView(APIView):
+    permission_classes = [IsAuthenticated, IsBatchOwner]
+
+    @extend_schema(
+        tags=['batches'], operation_id='batches_qr',
+        responses={200: OpenApiResponse(description='PNG image of the batch QR code')},
+    )
+    def get(self, request, pk):
+        batch = get_object_or_404(Batch, pk=pk)
+        self.check_object_permissions(request, batch)
+
+        png_bytes = generate_batch_qr_png(batch=batch)
+        return HttpResponse(png_bytes, content_type='image/png')
+
+
+class BatchResolveByCodeView(APIView):
+    permission_classes = [IsAuthenticated, IsBatchOwner]
+
+    @extend_schema(tags=['batches'], operation_id='batches_resolve_by_code', responses=BatchSummarySerializer)
+    def get(self, request, batch_code):
+        batch = get_batch_by_code(batch_code=batch_code)
+        if batch is None:
+            raise NotFound('No batch found for this code.')
+        self.check_object_permissions(request, batch)
+
+        return Response(BatchSummarySerializer(batch).data)

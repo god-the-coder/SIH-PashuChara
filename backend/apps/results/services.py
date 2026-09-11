@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 
 from ai.client import analyze_material
 from ai.risk_engine import classify_risk, default_recommendations_for_category
+from apps.inspections.models import InspectionStatus
 from apps.inspections.services import read_inspection_images
 from apps.recommendations.services import create_recommendation
 
@@ -109,6 +110,65 @@ def _build_trend_insight(points):
         f'Observed progression: {progression}. '
         f"Findings progressed from '{distinct_sequence[0]}' to '{distinct_sequence[-1]}' "
         'across the inspection period.'
+    )
+
+
+def build_result_comparison(*, result):
+    """Compare `result` against the batch's most recent prior SAVED result, for the
+    'Re-inspection Advisory' — shown when a farmer re-inspects a batch they already
+    have history for. Returns None when there's nothing to compare against.
+    """
+    inspection = result.inspection
+    if not inspection.batch_id:
+        return None
+
+    previous_result = (
+        Result.objects.filter(inspection__batch_id=inspection.batch_id, inspection__status=InspectionStatus.SAVED)
+        .exclude(inspection_id=inspection.pk)
+        .order_by('-inspection__saved_at')
+        .first()
+    )
+    if previous_result is None:
+        return None
+
+    def snapshot(entry):
+        return {
+            'inspection_id': entry.inspection_id,
+            'date': entry.inspection.saved_at or entry.inspection.created_at,
+            'risk_category': entry.risk_category,
+            'risk_score': entry.risk_score,
+            'confidence': entry.confidence,
+            'headline': entry.headline,
+        }
+
+    risk_score_delta = None
+    if result.risk_score is not None and previous_result.risk_score is not None:
+        risk_score_delta = result.risk_score - previous_result.risk_score
+
+    confidence_delta = None
+    if result.confidence is not None and previous_result.confidence is not None:
+        confidence_delta = result.confidence - previous_result.confidence
+
+    risk_category_changed = result.risk_category != previous_result.risk_category
+
+    return {
+        'previous': snapshot(previous_result),
+        'current': snapshot(result),
+        'risk_score_delta': risk_score_delta,
+        'confidence_delta': confidence_delta,
+        'risk_category_changed': risk_category_changed,
+        'summary': _build_comparison_summary(
+            previous_result=previous_result, result=result, risk_category_changed=risk_category_changed,
+        ),
+    }
+
+
+def _build_comparison_summary(*, previous_result, result, risk_category_changed):
+    if not risk_category_changed:
+        return f'Risk remains {result.risk_category} since your previous inspection of this batch.'
+    return (
+        f'Risk has changed from {previous_result.risk_category} to {result.risk_category} '
+        'since your previous inspection of this batch.'
     )
 
 

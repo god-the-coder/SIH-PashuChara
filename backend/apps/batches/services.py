@@ -1,9 +1,25 @@
+import io
+import secrets
+
+import qrcode
+
 from .models import Batch
+
+_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # excludes visually ambiguous chars (0/O, 1/I/L)
+_CODE_LENGTH = 8
+
+
+def _generate_unique_batch_code():
+    while True:
+        code = 'PC-' + ''.join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
+        if not Batch.objects.filter(batch_code=code).exists():
+            return code
 
 
 def create_batch_from_inspection(*, inspection):
     batch = Batch.objects.create(
         owner=inspection.owner,
+        batch_code=_generate_unique_batch_code(),
         batch_label='Batch',
         inspection_type=inspection.inspection_type,
         material_type=inspection.material_type,
@@ -33,3 +49,10 @@ def update_batch(*, batch, batch_label=None, quantity_kg=None):
     batch.full_clean()
     batch.save()
     return batch
+
+
+def generate_batch_qr_png(*, batch):
+    image = qrcode.make(batch.batch_code)
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    return buffer.getvalue()

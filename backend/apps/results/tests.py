@@ -13,8 +13,8 @@ from apps.batches.services import ensure_batch_for_inspection
 
 from .models import RiskCategory
 from .permissions import IsResultOwner
-from .selectors import get_result_by_inspection
-from .services import analyze_inspection, build_batch_trend, record_result
+from .selectors import get_latest_result_by_batch, get_result_by_inspection
+from .services import analyze_inspection, build_batch_trend, build_result_comparison, record_result
 
 
 def make_test_image():
@@ -345,3 +345,164 @@ class BuildBatchTrendServiceTests(TestCase):
 
         trend = build_batch_trend(batch=batch)
         self.assertEqual(len(trend['points']), 1)
+
+
+class GetLatestResultByBatchTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876510009', full_name='Owner', password='StrongPass123',
+        )
+
+    def _make_saved_result(self, batch=None):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        if batch is not None:
+            inspection.batch = batch
+            inspection.save(update_fields=['batch'])
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+        with patch('apps.results.services.analyze_material', return_value={
+            'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+        }):
+            result = analyze_inspection(inspection=inspection)
+        save_inspection(inspection=inspection)
+        image.image.delete(save=False)
+        return inspection, result
+
+    def test_returns_none_with_no_saved_results(self):
+        from apps.batches.services import create_batch_from_inspection
+
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        batch = create_batch_from_inspection(inspection=inspection)
+        self.assertIsNone(get_latest_result_by_batch(batch=batch))
+
+    def test_returns_most_recently_saved_result(self):
+        first_inspection, _ = self._make_saved_result()
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+        _, second_result = self._make_saved_result(batch=batch)
+
+        self.assertEqual(get_latest_result_by_batch(batch=batch), second_result)
+
+
+class BuildResultComparisonServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876510010', full_name='Owner', password='StrongPass123',
+        )
+
+    def _make_saved_result(self, batch=None, **findings_overrides):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        if batch is not None:
+            inspection.batch = batch
+            inspection.save(update_fields=['batch'])
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+
+        findings = {'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': []}
+        findings.update(findings_overrides)
+        with patch('apps.results.services.analyze_material', return_value=findings):
+            result = analyze_inspection(inspection=inspection)
+        save_inspection(inspection=inspection)
+        image.image.delete(save=False)
+        return inspection, result
+
+    def test_no_batch_yields_no_comparison(self):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+        with patch('apps.results.services.analyze_material', return_value={
+            'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+        }):
+            result = analyze_inspection(inspection=inspection)
+        image.image.delete(save=False)
+
+        self.assertIsNone(build_result_comparison(result=result))
+
+    def test_first_inspection_on_batch_yields_no_comparison(self):
+        inspection, result = self._make_saved_result()
+        self.assertIsNone(build_result_comparison(result=result))
+
+    def test_reinspection_compares_against_previous_saved_result(self):
+        first_inspection, _ = self._make_saved_result(
+            headline='Normal', indicators=[{'severity': 'none'}], confidence=90,
+        )
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+        _, second_result = self._make_saved_result(
+            batch=batch, headline='Mould detected', indicators=[{'severity': 'severe'}], confidence=95,
+        )
+
+        comparison = build_result_comparison(result=second_result)
+        self.assertIsNotNone(comparison)
+        self.assertEqual(comparison['previous']['risk_category'], RiskCategory.LOW)
+        self.assertEqual(comparison['current']['risk_category'], RiskCategory.HIGH)
+        self.assertTrue(comparison['risk_category_changed'])
+        self.assertEqual(comparison['risk_score_delta'], 90)
+        self.assertEqual(comparison['confidence_delta'], 5)
+
+    def test_comparison_excludes_unsaved_draft_history(self):
+        first_inspection, _ = self._make_saved_result()
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+
+        draft = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=12, batch=batch,
+        )
+        image = add_inspection_image(inspection=draft, image=make_test_image())
+        with patch('apps.results.services.analyze_material', return_value={
+            'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+        }):
+            draft_result = analyze_inspection(inspection=draft)
+        image.image.delete(save=False)
+
+        comparison = build_result_comparison(result=draft_result)
+        self.assertIsNotNone(comparison)
+        self.assertEqual(comparison['previous']['inspection_id'], first_inspection.pk)
+
+
+class ResultComparisonApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.owner = User.objects.create_user(
+            phone_number='+919876510011', full_name='API Owner', password='StrongPass123',
+        )
+
+    def test_result_response_includes_comparison_field(self):
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 10,
+        }, format='json')
+        first_id = response.data['id']
+        self.client.post(f'/api/inspections/{first_id}/images/', {'image': make_test_image()}, format='multipart')
+        with patch('apps.results.services.analyze_material') as mock_analyze:
+            mock_analyze.return_value = {'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': []}
+            response = self.client.post(f'/api/inspections/{first_id}/analyze/')
+        self.assertIsNone(response.data['comparison'])
+        response = self.client.post(f'/api/inspections/{first_id}/save/')
+        batch_id = response.data['batch']
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 8,
+            'batch_id': batch_id,
+        }, format='json')
+        second_id = response.data['id']
+        self.client.post(f'/api/inspections/{second_id}/images/', {'image': make_test_image()}, format='multipart')
+
+        with patch('apps.results.services.analyze_material') as mock_analyze:
+            mock_analyze.return_value = {
+                'summary': 'worse', 'headline': 'Mould detected', 'confidence': 95,
+                'indicators': [{'severity': 'severe'}],
+            }
+            response = self.client.post(f'/api/inspections/{second_id}/analyze/')
+
+        self.assertIsNotNone(response.data['comparison'])
+        self.assertEqual(response.data['comparison']['previous']['risk_category'], 'LOW')
+        self.assertEqual(response.data['comparison']['current']['risk_category'], 'HIGH')

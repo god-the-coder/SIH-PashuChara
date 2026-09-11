@@ -12,6 +12,7 @@ class Batch(models.Model):
         on_delete=models.CASCADE,
         related_name='batches',
     )
+    batch_code = models.CharField(max_length=20, unique=True)
     batch_label = models.CharField(max_length=150)
     inspection_type = models.CharField(max_length=16, choices=InspectionType.choices)
     material_type = models.CharField(max_length=32, choices=MaterialType.choices)

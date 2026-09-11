@@ -13,3 +13,7 @@ def list_results_by_batch(*, batch):
     return Result.objects.filter(
         inspection__batch=batch, inspection__status=InspectionStatus.SAVED,
     ).order_by('inspection__saved_at')
+
+
+def get_latest_result_by_batch(*, batch):
+    return list_results_by_batch(batch=batch).order_by('-inspection__saved_at').first()
