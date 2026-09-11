@@ -30,33 +30,33 @@ A subphase is checked off only after verification (Django `check`, migration app
 
 ## Phase 2 — `farms`
 
-- [ ] 2.1 Models
-- [ ] 2.2 Selectors
-- [ ] 2.3 Services
-- [ ] 2.4 Serializers
-- [ ] 2.5 Permissions
-- [ ] 2.6 Views & URLs
-- [ ] 2.7 Tests
+- [x] 2.1 Models — `Farm` (owner OneToOne, farm_name, location), migration applied, admin registered
+- [x] 2.2 Selectors — `get_farm_by_owner`, `get_farm_by_id`
+- [x] 2.3 Services — `create_farm` (one-per-farmer enforced), `update_farm`
+- [x] 2.4 Serializers — `FarmSerializer`
+- [x] 2.5 Permissions — `IsFarmOwner` (object-level)
+- [x] 2.6 Views & URLs — `GET/POST/PATCH /api/farms/me/`
+- [x] 2.7 Tests — 12 tests covering selectors, service, permission, and API flow
 
 ## Phase 3 — `inspections`
 
-- [ ] 3.1 Models
-- [ ] 3.2 Selectors
-- [ ] 3.3 Services
-- [ ] 3.4 Serializers
-- [ ] 3.5 Permissions
-- [ ] 3.6 Views & URLs
-- [ ] 3.7 Tests
+- [x] 3.1 Models — `Inspection` (owner, type, material, duration, DRAFT/SAVED status) + `InspectionImage`, migration applied, admin registered
+- [x] 3.2 Selectors — `get_inspection_by_id`, `list_inspections_by_owner`, `list_images_by_inspection`
+- [x] 3.3 Services — `create_draft_inspection`, `add_inspection_image`, `save_inspection` (DRAFT→SAVED)
+- [x] 3.4 Serializers — `InspectionSerializer` (read, nested images), `InspectionImageSerializer`, `CreateInspectionSerializer`
+- [x] 3.5 Permissions — `IsInspectionOwner` (object-level)
+- [x] 3.6 Views & URLs — list/create, detail, image upload, save at `/api/inspections/`
+- [x] 3.7 Tests — 14 tests covering selectors, services, permission, and API flow
 
 ## Phase 4 — `batches`
 
-- [ ] 4.1 Models
-- [ ] 4.2 Selectors
-- [ ] 4.3 Services
-- [ ] 4.4 Serializers
-- [ ] 4.5 Permissions
-- [ ] 4.6 Views & URLs
-- [ ] 4.7 Tests
+- [x] 4.1 Models — `Batch` (owner, label, inherited type fields, nullable quantity_kg), migration applied, admin registered; added nullable `Inspection.batch` FK (migration `inspections.0002`)
+- [x] 4.2 Selectors — `get_batch_by_id`, `list_batches_by_owner`
+- [x] 4.3 Services — `create_batch_from_inspection`, `ensure_batch_for_inspection` (idempotent), `update_batch`
+- [x] 4.4 Serializers — `BatchSerializer`
+- [x] 4.5 Permissions — `IsBatchOwner` (object-level)
+- [x] 4.6 Views & URLs — `GET /api/batches/`, `GET/PATCH /api/batches/{id}/`; `InspectionSaveView` auto-creates/attaches batch on save
+- [x] 4.7 Tests — 11 tests covering selectors, services, permission, and API flow (incl. auto-create-on-save integration)
 
 ## Phase 5 — `results`
 
