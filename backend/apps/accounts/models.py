@@ -10,6 +10,12 @@ phone_number_validator = RegexValidator(
 )
 
 
+class Gender(models.TextChoices):
+    MALE = 'male', 'Male'
+    FEMALE = 'female', 'Female'
+    OTHER = 'other', 'Other'
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     """Farmer account identity, authenticated by phone number."""
 
@@ -19,6 +25,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         validators=[phone_number_validator],
     )
     full_name = models.CharField(max_length=150)
+
+    # Optional personal-profile fields — none of these gate registration or
+    # login, so they're all nullable/blank and filled in later from the
+    # profile page.
+    email = models.EmailField(blank=True)
+    age = models.PositiveSmallIntegerField(null=True, blank=True)
+    gender = models.CharField(max_length=10, choices=Gender.choices, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

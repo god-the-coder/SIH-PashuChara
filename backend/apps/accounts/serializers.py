@@ -8,8 +8,20 @@ from .services import register_user
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'phone_number', 'full_name', 'date_joined')
+        fields = ('id', 'phone_number', 'full_name', 'email', 'age', 'gender', 'avatar', 'date_joined')
         read_only_fields = fields
+
+
+class UpdateUserSerializer(serializers.ModelSerializer):
+    """Phone number is the login identifier and isn't editable here.
+
+    The view always instantiates this with partial=True, so DRF already
+    treats every field here as optional per-request.
+    """
+
+    class Meta:
+        model = User
+        fields = ('full_name', 'email', 'age', 'gender', 'avatar')
 
 
 class RegisterSerializer(serializers.Serializer):
