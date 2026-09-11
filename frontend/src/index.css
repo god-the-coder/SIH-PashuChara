@@ -30,6 +30,20 @@
     scroll-behavior: smooth;
   }
 
+  /* Font Size setting (Settings page) — Tailwind's text-* utilities are rem-based,
+     so scaling the root font-size scales all of them together app-wide. */
+  html.text-scale-small {
+    font-size: 87.5%;
+  }
+
+  html.text-scale-normal {
+    font-size: 100%;
+  }
+
+  html.text-scale-large {
+    font-size: 112.5%;
+  }
+
   body {
     margin: 0;
     min-height: 100dvh;

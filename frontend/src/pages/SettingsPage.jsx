@@ -17,51 +17,32 @@ export default function SettingsPage() {
     setFontSize,
     clearCache,
     deleteAccount,
+    logout,
     user,
-    login,
     showToast,
   } = useDashboard();
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [newUserModalOpen, setNewUserModalOpen] = useState(false);
-  const [newUserName, setNewUserName] = useState("");
-  const [newUserPhone, setNewUserPhone] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
-  const handleAddNewUser = (e) => {
-    e.preventDefault();
-    if (!newUserName) return;
-    login({
-      name: newUserName,
-      isCustomName: true,
-      phone: newUserPhone || "9876500000",
-      role: "डेयरी किसान",
-      age: "38",
-      cattleCount: 12,
-      location: "आनंद, गुजरात",
-    });
-    setNewUserModalOpen(false);
-    setNewUserName("");
-    setNewUserPhone("");
-    showToast(`नया उपयोगकर्ता "${newUserName}" सक्रिय किया गया! 👤`);
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
-  const demoProfiles = [
-    { name: "रमेश चौधरी", label: "रमेश चौधरी (Ramesh Choudhary)", phone: "9876543210", cattle: 24, location: "करनाल, हरियाणा", isCustom: false },
-    { name: "सुरेश पटेल", label: "सुरेश पटेल (Suresh Patel)", phone: "9428011223", cattle: 18, location: "आनंद, गुजरात", isCustom: true },
-    { name: "राजेश कुमार", label: "राजेश कुमार (Rajesh Kumar)", phone: "9812345678", cattle: 12, location: "लुधियाना, पंजाब", isCustom: true },
-  ];
-
-  const handleSwitchToDemoUser = (profile) => {
-    login({
-      name: profile.name,
-      isCustomName: profile.isCustom,
-      phone: profile.phone,
-      role: "डेयरी किसान",
-      age: "42",
-      cattleCount: profile.cattle,
-      location: profile.location,
-    });
-    showToast(`उपयोगकर्ता बदलकर "${profile.name}" किया गया! ✓`);
+  const handleConfirmDelete = async () => {
+    setDeleteError("");
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      setDeleteConfirmOpen(false);
+      navigate("/login");
+    } catch (apiError) {
+      setDeleteError(apiError.message || t.errRegisterFailed);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -160,65 +141,47 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* SECTION 2: User Profiles & Switcher */}
+          {/* SECTION 2: Account */}
           <div className="bg-white dark:bg-[#181e18] p-4 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-                {t.userManagementTitle || "👥 उपयोगकर्ता प्रबंधन (User Accounts)"}
-              </h3>
-              <button
-                onClick={() => setNewUserModalOpen(true)}
-                className="text-xs font-bold text-emerald-800 dark:text-emerald-400 hover:underline cursor-pointer"
-              >
-                {t.addNewUserBtn || "+ नया जोड़ें"}
-              </button>
-            </div>
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
+              {t.userManagementTitle}
+            </h3>
 
-            <div className="space-y-2">
-              <div className="p-3 rounded-2xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#2D5A3D] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] text-white flex items-center justify-center font-bold text-xs">
-                    ✓
-                  </div>
-                  <div>
-                    <span className="text-xs font-black text-[#064d2c] dark:text-white block">
-                      {user?.name || "रमेश चौधरी"} ({t.activeAccountTag || "सक्रिय खाता"})
-                    </span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                      +91 {user?.phone || "9876543210"} • {user?.cattleCount || 24} {t.cattleCow?.split(" ")[0] || "पशु"}
-                    </span>
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black">
-                  {t.activeAccountTag || "सक्रिय"}
-                </span>
-              </div>
-
-              {/* Quick Switch Profiles */}
-              {demoProfiles
-                .filter((p) => p.phone !== user?.phone)
-                .map((profile) => (
-                  <div
-                    key={profile.phone}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-[#141914] border border-[#ded5c2] dark:border-[#242824]"
-                  >
+            {user?.isLoggedIn ? (
+              <>
+                <div className="p-3 rounded-2xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#2D5A3D] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] text-white flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </div>
                     <div>
-                      <span className="text-xs font-bold text-[#064d2c] dark:text-white block">
-                        {profile.label}
+                      <span className="text-xs font-black text-[#064d2c] dark:text-white block">
+                        {user.name}
                       </span>
                       <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                        +91 {profile.phone} • {profile.cattle} {t.cattleCow?.split(" ")[0] || "पशु"}
+                        {user.phone}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleSwitchToDemoUser(profile)}
-                      className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-emerald-50 text-xs font-bold text-[#064d2c] dark:text-gray-200 cursor-pointer"
-                    >
-                      {t.switchUserBtn || "स्विच करें"}
-                    </button>
                   </div>
-                ))}
-            </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black">
+                    {t.activeAccountTag}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] hover:bg-gray-100 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                >
+                  {t.drawerLogoutLabel}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full py-2.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold cursor-pointer"
+              >
+                {t.drawerLoginLabel}
+              </button>
+            )}
           </div>
 
           {/* SECTION 3: Storage, Cache & Data Management */}
@@ -276,86 +239,25 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-snug">
                 {t.confirmDeleteText || "आपका प्रोफ़ाइल, चारा इतिहास और सभी पशु विवरण हमेशा के लिए हटा दिए जाएंगे।"}
               </p>
+              {deleteError && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-2">{deleteError}</p>
+              )}
               <div className="mt-4 flex justify-center gap-2">
                 <button
                   onClick={() => setDeleteConfirmOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer"
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer disabled:opacity-60"
                 >
-                  {t.cancel || "रद्द करें"}
+                  {t.cancel}
                 </button>
                 <button
-                  onClick={() => {
-                    deleteAccount();
-                    setDeleteConfirmOpen(false);
-                    navigate("/login");
-                  }}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md cursor-pointer"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-60"
                 >
-                  {t.confirmDeleteBtn || "हाँ, हटाएं"}
+                  {isDeleting ? t.savingBtn : t.confirmDeleteBtn}
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add User Modal */}
-        {newUserModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#FAF7F0] dark:bg-[#16201a] w-full max-w-sm rounded-3xl p-5 border border-[#ded5c2] dark:border-[#242824] shadow-2xl">
-              <div className="flex items-center justify-between pb-3 border-b border-[#ded5c2] dark:border-[#242824]">
-                <h3 className="text-sm font-black text-[#064d2c] dark:text-white">
-                  {t.addUserModalTitle || "नया उपयोगकर्ता प्रोफाइल जोड़ें"}
-                </h3>
-                <button
-                  onClick={() => setNewUserModalOpen(false)}
-                  className="w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-bold text-gray-500 hover:text-black cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <form onSubmit={handleAddNewUser} className="mt-3 space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    {t.newUserNameLabel || "किसान का नाम *"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="जैसे: विक्रम यादव"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    {t.newUserPhoneLabel || "मोबाइल नंबर"}
-                  </label>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    placeholder="10 अंकों का नंबर"
-                    value={newUserPhone}
-                    onChange={(e) => setNewUserPhone(e.target.value.replace(/\D/g, ""))}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
-                  />
-                </div>
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewUserModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer"
-                  >
-                    {t.cancel || "रद्द करें"}
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-md cursor-pointer"
-                  >
-                    {t.saveUserBtn || "उपयोगकर्ता जोड़ें"}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}

@@ -4,6 +4,7 @@ from ai.client import analyze_material
 from ai.risk_engine import classify_risk, default_recommendations_for_category
 from apps.inspections.models import InspectionStatus
 from apps.inspections.services import read_inspection_images_for_analysis
+from apps.notifications.services import notify_recommendation_created, notify_result_created
 from apps.recommendations.services import create_recommendation
 
 from .models import Result
@@ -55,13 +56,16 @@ def analyze_inspection(*, inspection):
         requires_lab_testing=risk['requires_lab_testing'],
     )
 
+    notify_result_created(result=result)
+
     for recommendation in default_recommendations_for_category(risk['risk_category']):
-        create_recommendation(
+        created_recommendation = create_recommendation(
             result=result,
             text=recommendation['text'],
             action_type=recommendation['action_type'],
             urgency=recommendation['urgency'],
         )
+        notify_recommendation_created(recommendation=created_recommendation)
 
     return result
 

@@ -29,6 +29,31 @@ const authService = {
   me() {
     return apiClient.get('/api/accounts/me/')
   },
+
+  updateProfile({ fullName, email, age, gender, avatarFile }) {
+    if (avatarFile) {
+      const formData = new FormData()
+      if (fullName !== undefined) formData.append('full_name', fullName)
+      if (email !== undefined) formData.append('email', email)
+      if (age !== undefined && age !== null) formData.append('age', age)
+      if (gender !== undefined) formData.append('gender', gender)
+      formData.append('avatar', avatarFile)
+      return apiClient.patch('/api/accounts/me/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+
+    const payload = {}
+    if (fullName !== undefined) payload.full_name = fullName
+    if (email !== undefined) payload.email = email
+    if (age !== undefined) payload.age = age
+    if (gender !== undefined) payload.gender = gender
+    return apiClient.patch('/api/accounts/me/', payload)
+  },
+
+  deleteAccount() {
+    return apiClient.delete('/api/accounts/me/')
+  },
 }
 
 export default authService

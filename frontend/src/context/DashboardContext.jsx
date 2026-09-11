@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { translations } from "../constants/translations";
 import authService from "../services/auth/authService";
+import notificationService from "../services/notifications/notificationService";
 import { getApiError } from "../services/api/error";
 
 const DashboardContext = createContext(null);
@@ -25,9 +26,9 @@ const GUEST_USER = {
 
 /**
  * Maps the backend's UserSerializer shape onto the fields the UI expects.
- * Fields the backend doesn't track yet (age, cattleCount, location, ...)
- * are left neutral rather than fabricated — the farm/cattle phases fill
- * these in from their own real endpoints.
+ * Fields the backend doesn't track at the account level (cattleCount,
+ * location, ...) are left neutral rather than fabricated — the farm/cattle
+ * phases fill these in from their own real endpoints.
  */
 function userFromSession(apiUser) {
   return {
@@ -37,6 +38,10 @@ function userFromSession(apiUser) {
     name: apiUser.full_name,
     role: "",
     phone: apiUser.phone_number,
+    email: apiUser.email || "",
+    age: apiUser.age ?? "",
+    gender: apiUser.gender || "",
+    avatar: apiUser.avatar || "",
   };
 }
 
@@ -85,7 +90,13 @@ export function DashboardProvider({ children }) {
   const [authModalStep, setAuthModalStep] = useState("login"); // "login" | "register"
   const [isVoiceOn, setIsVoiceOn] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: "" });
-  const [notifRead, setNotifRead] = useState(false);
+
+  // Notifications — real, session-backed list + unread count (see apps.notifications
+  // on the backend). Not persisted locally: refetched from the server whenever a
+  // logged-in session is confirmed and after any read/mark-all-read action.
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifRead = unreadCount === 0;
 
   const t = translations[lang] ?? translations["hi"];
 
@@ -156,10 +167,58 @@ export function DashboardProvider({ children }) {
   }, [t, showToast]);
 
   // Notifications
-  const markAllRead = useCallback(() => {
-    setNotifRead(true);
-    showToast(t.toastAllRead || "सभी सूचनाएं पढ़ी गईं ✓");
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const [list, unread] = await Promise.all([
+        notificationService.list(),
+        notificationService.unreadCount(),
+      ]);
+      setNotifications(list);
+      setUnreadCount(unread.count ?? 0);
+    } catch {
+      // Best-effort — the bell just shows stale/empty state until the next refresh.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked || !user?.isLoggedIn) return;
+    let cancelled = false;
+    Promise.all([notificationService.list(), notificationService.unreadCount()])
+      .then(([list, unread]) => {
+        if (cancelled) return;
+        setNotifications(list);
+        setUnreadCount(unread.count ?? 0);
+      })
+      .catch(() => {
+        // Best-effort — the bell just shows stale/empty state until the next refresh.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authChecked, user?.isLoggedIn]);
+
+  const markAllRead = useCallback(async () => {
+    try {
+      await notificationService.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+      showToast(t.toastAllRead || "सभी सूचनाएं पढ़ी गईं ✓");
+    } catch (error) {
+      throw getApiError(error);
+    }
   }, [t, showToast]);
+
+  const markNotificationRead = useCallback(async (notificationId) => {
+    try {
+      await notificationService.markRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      throw getApiError(error);
+    }
+  }, []);
 
   // Auth operations — session-backed; errors are normalized (getApiError) and
   // re-thrown so the calling form can show a field-level message.
@@ -197,14 +256,24 @@ export function DashboardProvider({ children }) {
       // (e.g. session already expired server-side).
     }
     setUser(GUEST_USER);
+    setNotifications([]);
+    setUnreadCount(0);
     showToast("सफलतापूर्वक लॉग आउट हो गया 🔒");
   }, [showToast]);
 
-  // Not backed by a real endpoint yet — these fields (age, location, cattle
-  // count, ...) have no home on the backend until the farm/cattle phases land.
-  const updateProfile = useCallback((fields) => {
-    setUser((prev) => ({ ...prev, ...fields, isCustomName: true }));
-    showToast("प्रोफ़ाइल जानकारी सुरक्षित की गई! ✓");
+  // Personal-profile fields (name, email, age, gender, avatar) are real,
+  // session-backed data. Farm-level fields (location, cattle count) still
+  // live on the farm/cattle endpoints, not here.
+  const updateProfile = useCallback(async ({ fullName, email, age, gender, avatarFile }) => {
+    try {
+      const apiUser = await authService.updateProfile({ fullName, email, age, gender, avatarFile });
+      const updated = userFromSession(apiUser);
+      setUser(updated);
+      showToast("प्रोफ़ाइल जानकारी सुरक्षित की गई! ✓");
+      return updated;
+    } catch (error) {
+      throw getApiError(error);
+    }
   }, [showToast]);
 
   const openAuthModal = useCallback((step = "login") => {
@@ -221,11 +290,17 @@ export function DashboardProvider({ children }) {
     showToast("ऐप कैश व अस्थायी फाइलें सफलतापूर्वक साफ हुईं! 🧹");
   }, [showToast]);
 
-  // No account-deletion endpoint exists yet — this only clears local state.
-  const deleteAccount = useCallback(() => {
+  const deleteAccount = useCallback(async () => {
+    try {
+      await authService.deleteAccount();
+    } catch (error) {
+      throw getApiError(error);
+    }
     sessionStorage.clear();
     setUser(GUEST_USER);
-    showToast("खाता व स्थानीय डेटा हटा दिया गया। 🗑️");
+    setNotifications([]);
+    setUnreadCount(0);
+    showToast("खाता व समस्त डेटा स्थायी रूप से हटा दिया गया। 🗑️");
   }, [showToast]);
 
   // Dynamic translated display name, role, and greeting name
@@ -260,6 +335,10 @@ export function DashboardProvider({ children }) {
     isVoiceOn,
     toast,
     notifRead,
+    notifications,
+    unreadCount,
+    refreshNotifications,
+    markNotificationRead,
     user,
     authChecked,
     displayName,

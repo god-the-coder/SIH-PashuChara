@@ -6,6 +6,7 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from ai.client import generate_followup_questions as ai_generate_followup_questions
+from apps.notifications.services import notify_weather_alert
 from imaging.exceptions import ImageProcessingError, ImageValidationError
 from imaging.processor import create_processed_copy
 from imaging.validator import validate_image
@@ -128,6 +129,9 @@ def update_inspection_context(
     if update_fields:
         inspection.full_clean()
         inspection.save(update_fields=update_fields)
+
+        if 'humidity_percent' in update_fields or 'moisture_exposure' in update_fields:
+            notify_weather_alert(inspection=inspection)
 
     return inspection
 

@@ -10,7 +10,7 @@ const GOAT_BREEDS = ["बरबरी (Barbari)", "सिरोही (Sirohi)",
 
 export default function CattlePage() {
   const navigate = useNavigate();
-  const { t, user, updateProfile, showToast } = useDashboard();
+  const { t, user, showToast } = useDashboard();
 
   const [cattleList, setCattleList] = useState(
     user?.cattleDetails && user.cattleDetails.length > 0
@@ -50,8 +50,6 @@ export default function CattlePage() {
       };
       const updated = [...cattleList, voiceAdded];
       setCattleList(updated);
-      const total = updated.reduce((sum, c) => sum + Number(c.count), 0);
-      updateProfile({ cattleCount: total, cattleDetails: updated });
       showToast("✓ बोलकर 6 गिर गायें सफलतापूर्वक जोड़ी गईं!");
     }, 1900);
   };
@@ -66,8 +64,6 @@ export default function CattlePage() {
     };
     const updated = [...cattleList, entry];
     setCattleList(updated);
-    const total = updated.reduce((sum, c) => sum + Number(c.count), 0);
-    updateProfile({ cattleCount: total, cattleDetails: updated });
     setModalOpen(false);
     showToast("नया पशु रिकॉर्ड सफलतापूर्वक जोड़ा गया! 🐄");
   };
@@ -75,8 +71,6 @@ export default function CattlePage() {
   const handleRemove = (id) => {
     const updated = cattleList.filter((c) => c.id !== id);
     setCattleList(updated);
-    const total = updated.reduce((sum, c) => sum + Number(c.count), 0);
-    updateProfile({ cattleCount: total, cattleDetails: updated });
     showToast("पशु रिकॉर्ड हटाया गया");
   };
 
