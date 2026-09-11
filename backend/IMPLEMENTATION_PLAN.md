@@ -70,13 +70,13 @@ A subphase is checked off only after verification (Django `check`, migration app
 
 ## Phase 6 — `recommendations`
 
-- [ ] 6.1 Models
-- [ ] 6.2 Selectors
-- [ ] 6.3 Services
-- [ ] 6.4 Serializers
-- [ ] 6.5 Permissions
-- [ ] 6.6 Views & URLs
-- [ ] 6.7 Tests
+- [x] 6.1 Models — `Recommendation` (result FK, text), migration applied, admin registered
+- [x] 6.2 Selectors — `list_recommendations_by_result`
+- [x] 6.3 Services — `create_recommendation`
+- [x] 6.4 Serializers — `RecommendationSerializer`; nested into `ResultSerializer.recommendations`
+- [x] 6.5 Permissions — N/A, access gated through `Result`'s existing ownership check
+- [x] 6.6 Views & URLs — N/A, exposed only via nested `ResultSerializer` in `/api/results/{inspection_id}/`
+- [x] 6.7 Tests — 5 tests covering selector, service, and nested-in-result API output
 
 ## Phase 7 — Frontend integration
 
