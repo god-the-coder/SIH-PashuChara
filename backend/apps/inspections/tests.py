@@ -26,8 +26,14 @@ from .services import (
 
 
 def make_test_image(name='test.jpg'):
+    # Large enough and noisy enough to pass imaging.validator's usability checks
+    # (a real photo, not a tiny solid-color swatch).
+    import numpy as np
+
+    rng = np.random.default_rng(seed=0)
+    array = rng.integers(0, 255, (300, 300, 3), dtype='uint8')
     buf = io.BytesIO()
-    Image.new('RGB', (10, 10), color='green').save(buf, format='JPEG')
+    Image.fromarray(array).save(buf, format='JPEG')
     buf.seek(0)
     return SimpleUploadedFile(name, buf.read(), content_type='image/jpeg')
 

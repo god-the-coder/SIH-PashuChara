@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from ai.client import analyze_material
 from ai.risk_engine import classify_risk, default_recommendations_for_category
 from apps.inspections.models import InspectionStatus
-from apps.inspections.services import read_inspection_images
+from apps.inspections.services import read_inspection_images_for_analysis
 from apps.recommendations.services import create_recommendation
 
 from .models import Result
@@ -14,7 +14,7 @@ def analyze_inspection(*, inspection):
     if get_result_by_inspection(inspection=inspection) is not None:
         raise ValidationError('This inspection already has a result recorded.')
 
-    images = read_inspection_images(inspection=inspection)
+    images, primary_count = read_inspection_images_for_analysis(inspection=inspection)
     if not images:
         raise ValidationError('At least one image is required before analysis.')
 
@@ -30,6 +30,7 @@ def analyze_inspection(*, inspection):
         temperature_celsius=inspection.temperature_celsius,
         humidity_percent=inspection.humidity_percent,
         images=images,
+        primary_image_count=primary_count,
     )
 
     history = []

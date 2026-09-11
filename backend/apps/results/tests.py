@@ -20,9 +20,13 @@ from .services import analyze_inspection, build_batch_trend, build_result_compar
 def make_test_image():
     import io
 
+    import numpy as np
     from PIL import Image
+
+    rng = np.random.default_rng(seed=0)
+    array = rng.integers(0, 255, (300, 300, 3), dtype='uint8')
     buf = io.BytesIO()
-    Image.new('RGB', (10, 10), color='green').save(buf, format='JPEG')
+    Image.fromarray(array).save(buf, format='JPEG')
     buf.seek(0)
     return SimpleUploadedFile('test.jpg', buf.read(), content_type='image/jpeg')
 

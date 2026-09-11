@@ -61,14 +61,14 @@ def generate_followup_questions(
 def analyze_material(
     *, inspection_type, material_type, material_type_other, storage_duration_days, followup_qa, images,
     storage_condition=None, moisture_exposure=None, farmer_observation=None,
-    temperature_celsius=None, humidity_percent=None,
+    temperature_celsius=None, humidity_percent=None, primary_image_count=None,
 ):
     prompt = build_analysis_prompt(
         inspection_type=inspection_type, material_type=material_type,
         material_type_other=material_type_other, storage_duration_days=storage_duration_days,
         followup_qa=followup_qa, storage_condition=storage_condition, moisture_exposure=moisture_exposure,
         farmer_observation=farmer_observation, temperature_celsius=temperature_celsius,
-        humidity_percent=humidity_percent,
+        humidity_percent=humidity_percent, primary_image_count=primary_image_count, total_image_count=len(images),
     )
     data = _generate_json(prompt=prompt, images=images)
 
