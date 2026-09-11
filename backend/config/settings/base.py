@@ -143,6 +143,21 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF Settings
+# The frontend runs on a different origin (Vite dev server) than the API, so
+# Django's Origin check for unsafe requests needs these trusted explicitly —
+# session auth + CSRF only enforces once a request carries an authenticated
+# session (see apps.accounts.views.LoginView/MeView for where the cookie is
+# actually issued).
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://localhost:5173,http://127.0.0.1:5173',
+    ).split(',')
+    if origin.strip()
+]
+
 # Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

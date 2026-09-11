@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -22,6 +24,10 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    # Session auth's CSRF check only starts applying once a request carries an
+    # authenticated session — this guarantees the csrftoken cookie exists the
+    # moment that becomes true, so the very next write request can supply it.
+    @method_decorator(ensure_csrf_cookie)
     @extend_schema(tags=['accounts'], request=LoginSerializer, responses=UserSerializer)
     def post(self, request):
         phone_number = request.data.get('phone_number')
@@ -47,6 +53,9 @@ class LogoutView(APIView):
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # Also the app's session-boot check — refreshes the csrftoken cookie for
+    # an existing authenticated session (e.g. after cookies were partially cleared).
+    @method_decorator(ensure_csrf_cookie)
     @extend_schema(tags=['accounts'], responses=UserSerializer)
     def get(self, request):
         return Response(UserSerializer(request.user).data)
