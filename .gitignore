@@ -27,3 +27,14 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Agent & local workflow files
+.agents/
+AGENTS.md
+
+# Reference & extracted assets
+zip_extracted/
+*.zip
+khetsetu_*
+KHETSETU_*
+/*.png
