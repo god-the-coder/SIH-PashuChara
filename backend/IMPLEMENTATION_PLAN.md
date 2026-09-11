@@ -116,9 +116,12 @@ Farmer-provided + weather data for the "Storage & Environment" / "Farmer Informa
 - [x] 9.4 Serializers/Views — `PATCH /api/inspections/{id}/context/` (lat/lon-together validation, weather-failure-tolerant); `image_type` on `POST /api/inspections/{id}/images/`. Verified over HTTP, including the real weather fetch working end-to-end after the key was updated.
 - [x] 9.5 Tests — 18 new tests (weather client incl. key-leak regression guard, Risk Engine trend escalation, context service/endpoint, image_type); 108/108 total passing, zero real network calls in the suite
 
-## Phase 10 — Batch risk trend (small, follow-up to Phase 8)
+## Phase 10 — Batch risk trend
 
-- [ ] 10.1 Read endpoint aggregating a batch's saved inspections' results (risk_score + headline, ordered by date) for the "Risk Trend" report section
+- [x] 10.1 Fixed `list_results_by_batch` to only count SAVED inspections (also corrects Phase 9's trend-escalation input); added a regression test proving an abandoned draft's result no longer escalates a later inspection
+- [x] 10.2 Service — `build_batch_trend(batch)`: ordered points, `is_increasing` (net first→last), deterministic `insight` text. Verified live across a 3-inspection batch scenario.
+- [x] 10.3 View/URL — `GET /api/batches/{id}/trend/`. Verified over HTTP incl. cross-owner 403.
+- [x] 10.4 Tests — 8 new tests (service: empty/single/worsening trend, unsaved-draft exclusion; API: points shape, auth, cross-owner); 116/116 total passing
 
 ---
 

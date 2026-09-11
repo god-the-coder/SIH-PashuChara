@@ -1,13 +1,26 @@
+from unittest.mock import patch
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.inspections.models import InspectionType, MaterialType
-from apps.inspections.services import create_draft_inspection
+from apps.inspections.services import add_inspection_image, create_draft_inspection, save_inspection
 
 from .permissions import IsBatchOwner
 from .selectors import get_batch_by_id, list_batches_by_owner
 from .services import create_batch_from_inspection, ensure_batch_for_inspection, update_batch
+
+
+def make_test_image():
+    import io
+
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new('RGB', (10, 10), color='green').save(buf, format='JPEG')
+    buf.seek(0)
+    return SimpleUploadedFile('test.jpg', buf.read(), content_type='image/jpeg')
 
 
 def make_inspection(owner):
@@ -141,4 +154,39 @@ class BatchApiTests(TestCase):
         self.client.force_authenticate(user=self.other)
 
         response = self.client.get(f'/api/batches/{batch.pk}/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_trend_endpoint_returns_points(self):
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 10,
+        }, format='json')
+        inspection_id = response.data['id']
+        self.client.post(f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart')
+
+        with patch('apps.results.services.analyze_material') as mock_analyze:
+            mock_analyze.return_value = {
+                'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+            }
+            self.client.post(f'/api/inspections/{inspection_id}/analyze/')
+
+        response = self.client.post(f'/api/inspections/{inspection_id}/save/')
+        batch_id = response.data['batch']
+
+        response = self.client.get(f'/api/batches/{batch_id}/trend/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['points']), 1)
+        self.assertFalse(response.data['is_increasing'])
+
+    def test_trend_endpoint_requires_authentication(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        response = self.client.get(f'/api/batches/{batch.pk}/trend/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_trend_endpoint_denies_other_user(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.get(f'/api/batches/{batch.pk}/trend/')
         self.assertEqual(response.status_code, 403)

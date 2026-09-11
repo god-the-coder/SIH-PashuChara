@@ -9,10 +9,12 @@ from apps.accounts.models import User
 from apps.inspections.models import InspectionType, MaterialType
 from apps.inspections.services import add_inspection_image, create_draft_inspection, save_inspection
 
+from apps.batches.services import ensure_batch_for_inspection
+
 from .models import RiskCategory
 from .permissions import IsResultOwner
 from .selectors import get_result_by_inspection
-from .services import analyze_inspection, record_result
+from .services import analyze_inspection, build_batch_trend, record_result
 
 
 def make_test_image():
@@ -130,6 +132,9 @@ class AnalyzeInspectionServiceTests(TestCase):
         first_result = analyze_inspection(inspection=first_inspection)
         self.assertEqual(first_result.risk_category, RiskCategory.LOW)
         self.assertEqual(first_result.risk_score, 0)
+        # Only SAVED inspections count as batch history — an analyzed-but-unsaved
+        # draft must not influence a later inspection's trend escalation.
+        save_inspection(inspection=first_inspection)
         batch = ensure_batch_for_inspection(inspection=first_inspection)
 
         second_inspection = create_draft_inspection(
@@ -145,6 +150,39 @@ class AnalyzeInspectionServiceTests(TestCase):
         second_result = analyze_inspection(inspection=second_inspection)
         self.assertEqual(second_result.risk_score, 25)
         self.assertEqual(second_result.risk_category, RiskCategory.CAUTION)
+
+        image1.image.delete(save=False)
+        image2.image.delete(save=False)
+
+    @patch('apps.results.services.analyze_material')
+    def test_unsaved_draft_result_excluded_from_batch_history(self, mock_analyze):
+        from apps.batches.services import ensure_batch_for_inspection
+
+        mock_analyze.side_effect = [
+            {'summary': 'ok', 'headline': 'fine', 'confidence': 90, 'indicators': [{'severity': 'severe'}]},
+            {'summary': 'ok', 'headline': 'fine', 'confidence': 90, 'indicators': [{'severity': 'mild'}]},
+        ]
+
+        # Analyzed but deliberately left as DRAFT (abandoned session).
+        abandoned_inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        image1 = add_inspection_image(inspection=abandoned_inspection, image=make_test_image())
+        analyze_inspection(inspection=abandoned_inspection)
+        batch = ensure_batch_for_inspection(inspection=abandoned_inspection)
+
+        second_inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=20,
+        )
+        second_inspection.batch = batch
+        second_inspection.save(update_fields=['batch'])
+        image2 = add_inspection_image(inspection=second_inspection, image=make_test_image())
+
+        # The abandoned draft's HIGH-severity result must not escalate this one.
+        second_result = analyze_inspection(inspection=second_inspection)
+        self.assertEqual(second_result.risk_category, RiskCategory.LOW)
 
         image1.image.delete(save=False)
         image2.image.delete(save=False)
@@ -220,3 +258,90 @@ class ResultApiTests(TestCase):
         self.client.force_authenticate(user=self.other)
         response = self.client.get(f'/api/results/{inspection.pk}/')
         self.assertEqual(response.status_code, 403)
+
+
+class BuildBatchTrendServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876510008', full_name='Trend Owner', password='StrongPass123',
+        )
+
+    def _make_saved_result(self, batch=None, **findings_overrides):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        if batch is not None:
+            inspection.batch = batch
+            inspection.save(update_fields=['batch'])
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+
+        findings = {
+            'summary': 'ok', 'headline': 'Normal', 'confidence': 90, 'indicators': [],
+        }
+        findings.update(findings_overrides)
+        with patch('apps.results.services.analyze_material', return_value=findings):
+            result = analyze_inspection(inspection=inspection)
+        save_inspection(inspection=inspection)
+        image.image.delete(save=False)
+
+        return inspection, result
+
+    def test_no_saved_results_yields_empty_trend(self):
+        from apps.batches.services import create_batch_from_inspection
+
+        unanalyzed_inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        batch = create_batch_from_inspection(inspection=unanalyzed_inspection)
+
+        trend = build_batch_trend(batch=batch)
+        self.assertEqual(trend['points'], [])
+        self.assertFalse(trend['is_increasing'])
+        self.assertEqual(trend['insight'], '')
+
+    def test_single_point_never_increasing(self):
+        inspection, _ = self._make_saved_result()
+        batch = ensure_batch_for_inspection(inspection=inspection)
+
+        trend = build_batch_trend(batch=batch)
+        self.assertEqual(len(trend['points']), 1)
+        self.assertFalse(trend['is_increasing'])
+        self.assertEqual(trend['insight'], 'Findings have remained consistent: Normal.')
+
+    def test_worsening_trend_across_multiple_inspections(self):
+        first_inspection, _ = self._make_saved_result(
+            headline='Normal', indicators=[{'severity': 'none'}],
+        )
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+        self._make_saved_result(
+            batch=batch, headline='Mould detected', indicators=[{'severity': 'severe'}],
+        )
+
+        trend = build_batch_trend(batch=batch)
+        self.assertEqual(len(trend['points']), 2)
+        self.assertTrue(trend['is_increasing'])
+        self.assertIn('Normal', trend['insight'])
+        self.assertIn('Mould detected', trend['insight'])
+
+    def test_unsaved_draft_excluded_from_trend(self):
+        first_inspection, _ = self._make_saved_result()
+        batch = ensure_batch_for_inspection(inspection=first_inspection)
+
+        # A second inspection that gets analyzed but never saved.
+        draft = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=15,
+        )
+        draft.batch = batch
+        draft.save(update_fields=['batch'])
+        image = add_inspection_image(inspection=draft, image=make_test_image())
+        with patch('apps.results.services.analyze_material', return_value={
+            'summary': 'ok', 'headline': 'Severe', 'confidence': 90, 'indicators': [{'severity': 'severe'}],
+        }):
+            analyze_inspection(inspection=draft)
+        image.image.delete(save=False)
+
+        trend = build_batch_trend(batch=batch)
+        self.assertEqual(len(trend['points']), 1)

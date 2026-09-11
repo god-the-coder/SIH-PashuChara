@@ -3,6 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.results.services import build_batch_trend
+
 from .models import Batch
 from .permissions import IsBatchOwner
 from .selectors import list_batches_by_owner
@@ -35,3 +37,13 @@ class BatchDetailView(APIView):
 
         batch = update_batch(batch=batch, **serializer.validated_data)
         return Response(BatchSerializer(batch).data)
+
+
+class BatchTrendView(APIView):
+    permission_classes = [IsAuthenticated, IsBatchOwner]
+
+    def get(self, request, pk):
+        batch = get_object_or_404(Batch, pk=pk)
+        self.check_object_permissions(request, batch)
+
+        return Response(build_batch_trend(batch=batch))

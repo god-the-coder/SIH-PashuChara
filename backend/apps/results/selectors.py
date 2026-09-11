@@ -1,3 +1,5 @@
+from apps.inspections.models import InspectionStatus
+
 from .models import Result
 
 
@@ -6,4 +8,8 @@ def get_result_by_inspection(*, inspection):
 
 
 def list_results_by_batch(*, batch):
-    return Result.objects.filter(inspection__batch=batch).order_by('created_at')
+    # Only SAVED inspections count as real history — an analyzed-but-abandoned
+    # draft should never influence trend escalation or the trend display.
+    return Result.objects.filter(
+        inspection__batch=batch, inspection__status=InspectionStatus.SAVED,
+    ).order_by('inspection__saved_at')

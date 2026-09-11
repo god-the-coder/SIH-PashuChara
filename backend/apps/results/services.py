@@ -64,6 +64,54 @@ def analyze_inspection(*, inspection):
     return result
 
 
+def build_batch_trend(*, batch):
+    results = list(list_results_by_batch(batch=batch))
+    points = [
+        {
+            'inspection_id': result.inspection_id,
+            'date': result.inspection.saved_at,
+            'risk_score': result.risk_score,
+            'risk_category': result.risk_category,
+            'headline': result.headline,
+        }
+        for result in results
+    ]
+
+    is_increasing = (
+        len(points) >= 2
+        and points[0]['risk_score'] is not None
+        and points[-1]['risk_score'] is not None
+        and points[-1]['risk_score'] > points[0]['risk_score']
+    )
+
+    return {
+        'points': points,
+        'is_increasing': is_increasing,
+        'insight': _build_trend_insight(points),
+    }
+
+
+def _build_trend_insight(points):
+    headlines = [point['headline'] for point in points if point['headline']]
+    if not headlines:
+        return ''
+
+    distinct_sequence = []
+    for headline in headlines:
+        if not distinct_sequence or distinct_sequence[-1] != headline:
+            distinct_sequence.append(headline)
+
+    if len(distinct_sequence) == 1:
+        return f'Findings have remained consistent: {distinct_sequence[0]}.'
+
+    progression = ' → '.join(distinct_sequence)
+    return (
+        f'Observed progression: {progression}. '
+        f"Findings progressed from '{distinct_sequence[0]}' to '{distinct_sequence[-1]}' "
+        'across the inspection period.'
+    )
+
+
 def record_result(
     *, inspection, risk_category, summary, risk_score=None, headline='', action_label='',
     confidence=None, findings=None, requires_lab_testing=False,
