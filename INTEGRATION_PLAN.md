@@ -19,14 +19,14 @@ Nothing that writes data will work from the browser until this is fixed: `CsrfVi
 - [x] 1.3 Frontend: `apiClient` request interceptor reads the `csrftoken` cookie and attaches `X-CSRFToken` on unsafe methods ([services/api/client.js](frontend/src/services/api/client.js))
 - [x] 1.4 Verify: scripted `requests.Session()` walkthrough against the live dev server proved the exact mechanism the frontend interceptor mirrors — (a) no cookie before login, (b) `csrftoken` cookie issued on login, (c) an authenticated write **without** `X-CSRFToken` is rejected with 403, (d) the same write **with** the header succeeds (201). All four checks passed; full `accounts`/`farms` test suites (23 tests) still pass. A live-browser check of the interceptor itself wasn't possible in this session (no Browser tool available) — worth a quick manual smoke-test from an actual page before relying on it in Phase 2.
 
-## Phase 2 — Auth model decision + integration
+## Phase 2 — Auth model decision + integration ✅
 
-- [ ] 2.1 **Decision**: keep the backend's phone+password auth (rework `AuthModal`/`LoginPage` to drop the OTP screens), or add real OTP support to the backend (new scope — SMS provider, verification codes, expiry). Nothing in this phase proceeds until this is answered.
-- [ ] 2.2 `authService`: `register()`, `login()`, `logout()`, `me()` wired to `/api/accounts/*`
-- [ ] 2.3 Rework `LoginPage`/`AuthModal`/`RegisterPage` to match the decided flow (remove fake OTP timers either way)
-- [ ] 2.4 `DashboardContext`: replace the hardcoded `DEFAULT_USER`/`isLoggedIn: true` with real session state — call `me()` on app load, update on login/logout, stop persisting fabricated user fields to `localStorage`
-- [ ] 2.5 `ProtectedRoute`: actually redirect unauthenticated users instead of passing every route through
-- [ ] 2.6 Verify: register → login → refresh page → still logged in (real session) → logout → protected routes redirect
+- [x] 2.1 **Decision**: phone + password (no OTP). Backend stays as-is; fake OTP/Google/survey screens removed from the frontend.
+- [x] 2.2 `authService`: `register()`, `login()`, `logout()`, `me()` wired to `/api/accounts/*` ([services/auth/authService.js](frontend/src/services/auth/authService.js))
+- [x] 2.3 `LoginPage`/`AuthModal` rebuilt as real phone+password forms (OTP timers, fake OTP entry, and the fabricated Google sign-in removed since none of it corresponded to real backend capability); `RegisterPage` built out from a stub with a real name/phone/password form
+- [x] 2.4 `DashboardContext`: `DEFAULT_USER`/`isLoggedIn: true` replaced with real session state — `me()` runs on app load (`authChecked` flag gates rendering until it resolves), `login`/`register`/`logout` call the real endpoints, nothing auth-related persists to `localStorage` anymore. Fields the backend doesn't track yet (age, location, cattle count, ...) are left neutral instead of fabricated for a real logged-in user.
+- [x] 2.5 `ProtectedRoute`: **adjusted from the original plan** — the app already has an intentional guest-browsing affordance (SplashPage/LoginPage's "continue as guest", `isLoggedIn`-aware nav everywhere) that a hard per-route redirect would have broken. Implemented instead as a render-gate in `RootLayout` that holds child routes until the initial `me()` check resolves (avoids a flash of guest UI before a real session loads); actual authorization stays enforced by the backend, and feature phases wiring real API calls should prompt login on a 401 rather than the router blocking wholesale.
+- [x] 2.6 Verify: scripted session-flow proof against the live dev server — anonymous `me()` → 403, `register()` → 201, `login()` → 200 with real `full_name`/`phone_number`, a fresh `me()` call (page-refresh equivalent) still returns the same user, `logout()` → 204, `me()` after logout → 403 again. All 6 steps passed. `npm run lint`/`npm run build` both clean (zero new errors vs. the pre-existing 19 baseline lint errors elsewhere in the pulled frontend). A live-browser click-through wasn't available in this session (Browser tool unavailable) — worth a manual smoke test from an actual page.
 
 ## Phase 3 — Farm service integration
 

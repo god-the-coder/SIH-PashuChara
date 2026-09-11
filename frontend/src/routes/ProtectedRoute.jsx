@@ -1,12 +1,22 @@
 import { Outlet } from 'react-router-dom'
+import { useDashboard } from '../context/DashboardContext'
 
 /**
- * Authentication boundary for application routes.
+ * The app supports guest browsing by design (see SplashPage / LoginPage's
+ * "continue as guest" link, and the isLoggedIn-aware nav components) — this
+ * does not hard-redirect unauthenticated users. Every real write already
+ * requires a session on the backend; feature pages should react to a 401
+ * from their own service calls (prompt login via `openAuthModal()`) rather
+ * than being blocked at the route level.
  *
- * It intentionally permits every route for now. Authentication and redirect
- * behaviour can be added here without changing the application route tree.
+ * It only holds rendering until the initial session check resolves, so nested
+ * pages don't render a guest UI for a flash right before a real session loads.
  */
 function ProtectedRoute() {
+  const { authChecked } = useDashboard()
+
+  if (!authChecked) return null
+
   return <Outlet />
 }
 

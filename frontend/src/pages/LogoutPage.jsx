@@ -6,8 +6,8 @@ export default function LogoutPage() {
   const navigate = useNavigate();
   const { t, logout, user } = useDashboard();
 
-  const handleConfirmLogout = () => {
-    logout();
+  const handleConfirmLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
