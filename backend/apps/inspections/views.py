@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -37,6 +38,17 @@ from .services import (
 class InspectionListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_list',
+        parameters=[
+            OpenApiParameter(
+                'status', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False,
+                enum=InspectionStatus.values,
+                description='Filter to inspections in this status (e.g. SAVED for Inspection History).',
+            ),
+        ],
+        responses=InspectionSerializer(many=True),
+    )
     def get(self, request):
         status_filter = request.query_params.get('status')
         if status_filter and status_filter not in InspectionStatus.values:
@@ -45,6 +57,10 @@ class InspectionListCreateView(APIView):
         inspections = list_inspections_by_owner(owner=request.user, status=status_filter)
         return Response(InspectionSerializer(inspections, many=True).data)
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_create',
+        request=CreateInspectionSerializer, responses=InspectionSerializer,
+    )
     def post(self, request):
         serializer = CreateInspectionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -68,6 +84,7 @@ class InspectionListCreateView(APIView):
 class InspectionDetailView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(tags=['inspections'], operation_id='inspections_retrieve', responses=InspectionSerializer)
     def get(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -77,6 +94,10 @@ class InspectionDetailView(APIView):
 class InspectionImageUploadView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_images_create',
+        request=InspectionImageSerializer, responses=InspectionImageSerializer,
+    )
     def post(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -95,6 +116,7 @@ class InspectionImageUploadView(APIView):
 class InspectionImageDetailView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(tags=['inspections'], operation_id='inspections_images_delete', request=None, responses=None)
     def delete(self, request, pk, image_id):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -114,6 +136,10 @@ class InspectionImageDetailView(APIView):
 class InspectionContextView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_context_update',
+        request=InspectionContextSerializer, responses=InspectionSerializer,
+    )
     def patch(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -132,6 +158,7 @@ class InspectionContextView(APIView):
 class InspectionSaveView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(tags=['inspections'], operation_id='inspections_save', request=None, responses=InspectionSerializer)
     def post(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -150,6 +177,10 @@ class InspectionSaveView(APIView):
 class InspectionQuestionsView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_questions_generate',
+        request=None, responses=InspectionSerializer,
+    )
     def post(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -167,6 +198,10 @@ class InspectionQuestionsView(APIView):
 class InspectionAnswerQuestionsView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_questions_answer',
+        request=FollowupAnswersSerializer, responses=InspectionSerializer,
+    )
     def post(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)
@@ -185,6 +220,7 @@ class InspectionAnswerQuestionsView(APIView):
 class InspectionAnalyzeView(APIView):
     permission_classes = [IsAuthenticated, IsInspectionOwner]
 
+    @extend_schema(tags=['inspections'], operation_id='inspections_analyze', request=None, responses=ResultSerializer)
     def post(self, request, pk):
         inspection = get_object_or_404(Inspection, pk=pk)
         self.check_object_permissions(request, inspection)

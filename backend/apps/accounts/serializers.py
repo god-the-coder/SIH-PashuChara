@@ -22,3 +22,8 @@ class RegisterSerializer(serializers.Serializer):
             return register_user(**validated_data)
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.messages)
+
+
+class LoginSerializer(serializers.Serializer):
+    phone_number = serializers.CharField()
+    password = serializers.CharField(write_only=True)

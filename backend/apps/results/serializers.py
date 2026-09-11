@@ -15,3 +15,17 @@ class ResultSerializer(serializers.ModelSerializer):
             'findings', 'requires_lab_testing', 'created_at', 'recommendations',
         )
         read_only_fields = fields
+
+
+class BatchTrendPointSerializer(serializers.Serializer):
+    inspection_id = serializers.IntegerField()
+    date = serializers.DateTimeField()
+    risk_score = serializers.IntegerField(allow_null=True)
+    risk_category = serializers.CharField()
+    headline = serializers.CharField(allow_blank=True)
+
+
+class BatchTrendSerializer(serializers.Serializer):
+    points = BatchTrendPointSerializer(many=True)
+    is_increasing = serializers.BooleanField()
+    insight = serializers.CharField(allow_blank=True)

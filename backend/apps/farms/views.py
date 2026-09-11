@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -13,12 +14,14 @@ from .services import create_farm, update_farm
 class MyFarmView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(tags=['farms'], responses=FarmSerializer)
     def get(self, request):
         farm = get_farm_by_owner(owner=request.user)
         if farm is None:
             return Response({'detail': 'No farm registered yet.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(FarmSerializer(farm).data)
 
+    @extend_schema(tags=['farms'], request=FarmSerializer, responses=FarmSerializer)
     def post(self, request):
         serializer = FarmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -30,6 +33,7 @@ class MyFarmView(APIView):
 
         return Response(FarmSerializer(farm).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(tags=['farms'], request=FarmSerializer, responses=FarmSerializer)
     def patch(self, request):
         farm = get_farm_by_owner(owner=request.user)
         if farm is None:

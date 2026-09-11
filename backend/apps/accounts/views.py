@@ -1,15 +1,17 @@
 from django.contrib.auth import authenticate, login, logout
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(tags=['accounts'], request=RegisterSerializer, responses=UserSerializer)
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -20,6 +22,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(tags=['accounts'], request=LoginSerializer, responses=UserSerializer)
     def post(self, request):
         phone_number = request.data.get('phone_number')
         password = request.data.get('password')
@@ -35,6 +38,7 @@ class LoginView(APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(tags=['accounts'], request=None, responses=None)
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -43,5 +47,6 @@ class LogoutView(APIView):
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(tags=['accounts'], responses=UserSerializer)
     def get(self, request):
         return Response(UserSerializer(request.user).data)

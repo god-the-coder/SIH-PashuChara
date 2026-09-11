@@ -132,6 +132,14 @@ Closed three gaps found when comparing implementation against `project_explain.t
 - [x] 11.3 `delete_inspection_image` (DRAFT-only) + `DELETE /api/inspections/{id}/images/{image_id}/`
 - [x] 11.4 Tests — 14 new tests (selector filter, service validation, API flows incl. cross-owner rejection); full suite passing
 
+## Phase 12 — API schema quality
+
+`manage.py spectacular --fail-on-warn` was surfacing warnings for every APIView (no serializer inferable) plus operationId collisions between list/detail GETs on `batches` and `inspections`. Fixed since the frontend team is actively integrating against `/api/docs/`.
+
+- [x] 12.1 `@extend_schema` added per method across `accounts`, `farms`, `batches`, `inspections`, `results` views — explicit `request`/`responses` serializers, `operation_id`, and `tags`
+- [x] 12.2 Added `LoginSerializer` (accounts) and `BatchTrendPointSerializer`/`BatchTrendSerializer` (results) purely for schema description of previously-undocumented shapes
+- [x] 12.3 Verified: `manage.py spectacular --fail-on-warn` exits 0 with zero warnings; full suite still 132/132 passing
+
 ---
 
 ## Notes
