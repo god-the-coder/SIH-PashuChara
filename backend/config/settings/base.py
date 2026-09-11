@@ -125,6 +125,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Custom user model (accounts app), authenticated by phone number
+AUTH_USER_MODEL = 'accounts.User'
+
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
