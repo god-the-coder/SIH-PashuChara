@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from .serializers import LoginSerializer, RegisterSerializer, UpdateUserSerializer, UserSerializer
 
 
 class RegisterView(APIView):
@@ -18,7 +18,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
@@ -38,7 +38,7 @@ class LoginView(APIView):
             return Response({'detail': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         login(request, user)
-        return Response(UserSerializer(user).data)
+        return Response(UserSerializer(user, context={'request': request}).data)
 
 
 class LogoutView(APIView):
@@ -58,4 +58,20 @@ class MeView(APIView):
     @method_decorator(ensure_csrf_cookie)
     @extend_schema(tags=['accounts'], responses=UserSerializer)
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={'request': request}).data)
+
+    @extend_schema(tags=['accounts'], request=UpdateUserSerializer, responses=UserSerializer)
+    def patch(self, request):
+        serializer = UpdateUserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user, context={'request': request}).data)
+
+    # Permanently deletes the account and, via on_delete=CASCADE, every farm,
+    # inspection, batch and result owned by it.
+    @extend_schema(tags=['accounts'], request=None, responses=None)
+    def delete(self, request):
+        user = request.user
+        logout(request)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

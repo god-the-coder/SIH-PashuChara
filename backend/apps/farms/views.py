@@ -1,10 +1,13 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from weather.client import fetch_current_weather
+from weather.exceptions import WeatherServiceError
 
 from .selectors import get_farm_by_owner
 from .serializers import FarmSerializer
@@ -44,3 +47,36 @@ class MyFarmView(APIView):
 
         farm = update_farm(farm=farm, **serializer.validated_data)
         return Response(FarmSerializer(farm).data)
+
+
+class WeatherCurrentView(APIView):
+    """Current conditions for the dashboard's weather card, given a client-supplied
+    location (browser geolocation) rather than a stored farm coordinate."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['farms'],
+        parameters=[
+            OpenApiParameter('lat', float, required=True),
+            OpenApiParameter('lon', float, required=True),
+        ],
+    )
+    def get(self, request):
+        lat = request.query_params.get('lat')
+        lon = request.query_params.get('lon')
+        if lat is None or lon is None:
+            raise ValidationError({'detail': 'lat and lon query params are required.'})
+
+        try:
+            latitude = float(lat)
+            longitude = float(lon)
+        except ValueError:
+            raise ValidationError({'detail': 'lat and lon must be numeric.'})
+
+        try:
+            weather = fetch_current_weather(latitude=latitude, longitude=longitude)
+        except WeatherServiceError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(weather)

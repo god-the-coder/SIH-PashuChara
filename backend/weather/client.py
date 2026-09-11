@@ -36,7 +36,10 @@ def fetch_current_weather(*, latitude, longitude):
     if 'temp' not in main or 'humidity' not in main:
         raise WeatherServiceError('Weather response missing temperature/humidity.')
 
+    conditions = data.get('weather') or []
+
     return {
         'temperature_celsius': main['temp'],
         'humidity_percent': main['humidity'],
+        'condition': conditions[0]['main'] if conditions else '',
     }

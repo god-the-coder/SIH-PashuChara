@@ -28,7 +28,7 @@ def build_followup_questions_prompt(*, inspection_type, material_type, material_
 def build_analysis_prompt(
     *, inspection_type, material_type, material_type_other, storage_duration_days, followup_qa,
     storage_condition=None, moisture_exposure=None, farmer_observation=None,
-    temperature_celsius=None, humidity_percent=None,
+    temperature_celsius=None, humidity_percent=None, primary_image_count=None, total_image_count=None,
 ):
     context = _context_block(
         inspection_type=inspection_type, material_type=material_type,
@@ -52,13 +52,26 @@ def build_analysis_prompt(
         extra_context_lines.append(f'Ambient humidity: {humidity_percent}%')
     extra_context_block = ('\n'.join(extra_context_lines) + '\n') if extra_context_lines else ''
 
+    image_role_block = ''
+    if primary_image_count and total_image_count and total_image_count > primary_image_count:
+        supplementary_count = total_image_count - primary_image_count
+        image_role_block = (
+            f'\nThe first {primary_image_count} attached image(s) are the farmer\'s original, unedited photos — '
+            'treat these as the primary evidence for your assessment. '
+            f'The following {supplementary_count} image(s) are automatically resized, brightness/contrast-'
+            'normalized, denoised and lightly sharpened copies of those same photos, provided only to help you '
+            'see faint detail (e.g. subtle mold or discoloration) more clearly. Treat them as supplementary '
+            'visual aids, not as independent or primary evidence, and never cite an artifact introduced by '
+            'this processing (e.g. over-sharpened edges, denoising smoothing) as a finding.\n'
+        )
+
     return (
         'You are the visual-assessment component of a farmer-facing app that screens animal feed and silage '
         'for visible quality and safety concerns. You are NOT performing laboratory analysis, and must not '
         'claim certainty about anything that requires physical or chemical testing (nutritional composition, '
         'pH, aflatoxins, mycotoxins, urea adulteration). Frame those as reference-based estimates or flag them '
         'as requiring verification.\n\n'
-        f'{context}{qa_block}{extra_context_block}\n'
+        f'{context}{qa_block}{extra_context_block}{image_role_block}\n'
         'Examine the attached photos and respond with ONLY a JSON object of this exact shape (no other text):\n'
         '{\n'
         '  "summary": "1-2 plain-language sentences a farmer can understand",\n'

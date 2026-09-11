@@ -1,9 +1,15 @@
 import mimetypes
+import os
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from ai.client import generate_followup_questions as ai_generate_followup_questions
+from apps.notifications.services import notify_weather_alert
+from imaging.exceptions import ImageProcessingError, ImageValidationError
+from imaging.processor import create_processed_copy
+from imaging.validator import validate_image
 from weather.client import fetch_current_weather
 from weather.exceptions import WeatherServiceError
 
@@ -32,11 +38,39 @@ def create_draft_inspection(
     return inspection
 
 
+def _processed_filename(original_name):
+    base = os.path.splitext(os.path.basename(original_name or 'image'))[0]
+    return f'{base}_processed.jpg'
+
+
 def add_inspection_image(*, inspection, image, image_type=ImageType.FRONT_GENERAL):
+    """Validates the upload is a usable photo, then stores it untouched alongside
+    a separately-generated processed copy (see imaging.validator/.processor).
+    The original is never modified — it stays the primary evidence sent to Gemini,
+    with the processed copy attached only as a supplementary, more-visible aid.
+    """
     if inspection.status != InspectionStatus.DRAFT:
         raise ValidationError('Cannot add images to an inspection that is not in draft.')
 
-    return InspectionImage.objects.create(inspection=inspection, image=image, image_type=image_type)
+    original_bytes = image.read()
+    image.seek(0)
+
+    try:
+        validate_image(original_bytes)
+    except ImageValidationError as exc:
+        raise ValidationError(str(exc))
+
+    try:
+        processed_bytes = create_processed_copy(original_bytes)
+    except ImageProcessingError as exc:
+        raise ValidationError(str(exc))
+
+    inspection_image = InspectionImage(inspection=inspection, image=image, image_type=image_type)
+    inspection_image.processed_image.save(
+        _processed_filename(image.name), ContentFile(processed_bytes), save=False,
+    )
+    inspection_image.save()
+    return inspection_image
 
 
 def delete_inspection_image(*, inspection, image):
@@ -96,10 +130,15 @@ def update_inspection_context(
         inspection.full_clean()
         inspection.save(update_fields=update_fields)
 
+        if 'humidity_percent' in update_fields or 'moisture_exposure' in update_fields:
+            notify_weather_alert(inspection=inspection)
+
     return inspection
 
 
 def read_inspection_images(*, inspection):
+    """Original photos only, for the follow-up-questions pass — that prompt doesn't
+    need the primary/supplementary distinction analysis does (see below)."""
     images = []
     for inspection_image in inspection.images.all():
         with inspection_image.image.open('rb') as file:
@@ -107,6 +146,28 @@ def read_inspection_images(*, inspection):
         mime_type = mimetypes.guess_type(inspection_image.image.name)[0] or 'image/jpeg'
         images.append((data, mime_type))
     return images
+
+
+def read_inspection_images_for_analysis(*, inspection):
+    """Originals first (primary evidence), then their processed copies
+    (supplementary, for visibility only — see imaging.processor). Returns
+    (images, primary_count) so the caller can tell Gemini where the split is.
+    """
+    primary = []
+    supplementary = []
+    for inspection_image in inspection.images.all():
+        with inspection_image.image.open('rb') as file:
+            data = file.read()
+        mime_type = mimetypes.guess_type(inspection_image.image.name)[0] or 'image/jpeg'
+        primary.append((data, mime_type))
+
+        if inspection_image.processed_image:
+            with inspection_image.processed_image.open('rb') as file:
+                processed_data = file.read()
+            processed_mime = mimetypes.guess_type(inspection_image.processed_image.name)[0] or 'image/jpeg'
+            supplementary.append((processed_data, processed_mime))
+
+    return primary + supplementary, len(primary)
 
 
 def generate_followup_questions(*, inspection):

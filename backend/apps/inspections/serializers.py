@@ -6,8 +6,8 @@ from .models import Inspection, InspectionImage
 class InspectionImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = InspectionImage
-        fields = ('id', 'image', 'image_type', 'uploaded_at')
-        read_only_fields = ('id', 'uploaded_at')
+        fields = ('id', 'image', 'processed_image', 'image_type', 'uploaded_at')
+        read_only_fields = ('id', 'processed_image', 'uploaded_at')
 
 
 class InspectionSerializer(serializers.ModelSerializer):

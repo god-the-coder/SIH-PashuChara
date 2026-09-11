@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.batches',
     'apps.results',
     'apps.recommendations',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [

@@ -19,7 +19,15 @@ class FetchCurrentWeatherTests(SimpleTestCase):
             json=lambda: {'main': {'temp': 26.5, 'humidity': 70}},
         )
         result = fetch_current_weather(latitude=19.9975, longitude=73.7898)
-        self.assertEqual(result, {'temperature_celsius': 26.5, 'humidity_percent': 70})
+        self.assertEqual(result, {'temperature_celsius': 26.5, 'humidity_percent': 70, 'condition': ''})
+
+    @patch('weather.client.requests.get')
+    def test_parses_condition_when_present(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {'main': {'temp': 26.5, 'humidity': 70}, 'weather': [{'main': 'Clouds'}]},
+        )
+        result = fetch_current_weather(latitude=19.9975, longitude=73.7898)
+        self.assertEqual(result['condition'], 'Clouds')
 
     @patch('weather.client.requests.get')
     def test_missing_fields_raises_service_error(self, mock_get):

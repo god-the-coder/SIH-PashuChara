@@ -82,6 +82,10 @@ class InspectionImage(models.Model):
         related_name='images',
     )
     image = models.ImageField(upload_to='inspections/%Y/%m/')
+    # A resized/normalized/denoised/sharpened copy of `image` (see imaging.processor) —
+    # kept purely as a supplementary, more-visible copy for Gemini and the UI.
+    # `image` itself is never modified and remains the primary evidence.
+    processed_image = models.ImageField(upload_to='inspections/processed/%Y/%m/', null=True, blank=True)
     image_type = models.CharField(max_length=16, choices=ImageType.choices, default=ImageType.FRONT_GENERAL)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
