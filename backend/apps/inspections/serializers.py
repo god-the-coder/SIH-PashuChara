@@ -35,6 +35,7 @@ class CreateInspectionSerializer(serializers.Serializer):
     material_type = serializers.ChoiceField(choices=Inspection._meta.get_field('material_type').choices)
     material_type_other = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     storage_duration_days = serializers.IntegerField(min_value=0)
+    batch_id = serializers.IntegerField(required=False)
 
 
 class FollowupAnswersSerializer(serializers.Serializer):

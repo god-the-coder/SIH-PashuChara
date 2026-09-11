@@ -17,6 +17,7 @@ from .selectors import get_inspection_by_id, list_images_by_inspection, list_ins
 from .services import (
     add_inspection_image,
     create_draft_inspection,
+    delete_inspection_image,
     generate_followup_questions,
     save_inspection,
     submit_followup_answers,
@@ -51,6 +52,21 @@ class InspectionSelectorTests(TestCase):
         )
         self.assertEqual(list(list_inspections_by_owner(owner=self.owner)), [self.inspection])
         self.assertEqual(list(list_inspections_by_owner(owner=other)), [])
+
+    def test_list_inspections_by_owner_filters_by_status(self):
+        save_inspection(inspection=self.inspection)
+        draft = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.FEED,
+            material_type=MaterialType.DRY_FODDER, storage_duration_days=5,
+        )
+        self.assertEqual(
+            list(list_inspections_by_owner(owner=self.owner, status=InspectionStatus.SAVED)),
+            [self.inspection],
+        )
+        self.assertEqual(
+            list(list_inspections_by_owner(owner=self.owner, status=InspectionStatus.DRAFT)),
+            [draft],
+        )
 
     def test_list_images_by_inspection(self):
         image = add_inspection_image(inspection=self.inspection, image=make_test_image())
@@ -88,6 +104,62 @@ class InspectionServiceTests(TestCase):
 
         with self.assertRaises(ValidationError):
             add_inspection_image(inspection=inspection, image=make_test_image())
+
+    def test_delete_inspection_image_removes_it_while_draft(self):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.FEED,
+            material_type=MaterialType.DRY_FODDER, storage_duration_days=5,
+        )
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+
+        delete_inspection_image(inspection=inspection, image=image)
+
+        self.assertEqual(list(list_images_by_inspection(inspection=inspection)), [])
+
+    def test_delete_inspection_image_rejected_when_not_draft(self):
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.FEED,
+            material_type=MaterialType.DRY_FODDER, storage_duration_days=5,
+        )
+        image = add_inspection_image(inspection=inspection, image=make_test_image())
+        save_inspection(inspection=inspection)
+
+        with self.assertRaises(ValidationError):
+            delete_inspection_image(inspection=inspection, image=image)
+        image.image.delete(save=False)
+
+    def test_create_draft_inspection_can_attach_to_owned_batch(self):
+        from apps.batches.services import create_batch_from_inspection
+
+        first = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        batch = create_batch_from_inspection(inspection=first)
+
+        inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=8, batch=batch,
+        )
+        self.assertEqual(inspection.batch_id, batch.pk)
+
+    def test_create_draft_inspection_rejects_batch_owned_by_someone_else(self):
+        from apps.batches.services import create_batch_from_inspection
+
+        other = User.objects.create_user(
+            phone_number='+919876540099', full_name='Other', password='StrongPass123',
+        )
+        other_inspection = create_draft_inspection(
+            owner=other, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+        batch = create_batch_from_inspection(inspection=other_inspection)
+
+        with self.assertRaises(ValidationError):
+            create_draft_inspection(
+                owner=self.owner, inspection_type=InspectionType.SILAGE,
+                material_type=MaterialType.SILAGE, storage_duration_days=8, batch=batch,
+            )
 
     def test_save_inspection_sets_status_and_timestamp(self):
         inspection = create_draft_inspection(
@@ -225,6 +297,109 @@ class InspectionApiTests(TestCase):
         response = self.client.post(
             f'/api/inspections/{inspection_id}/images/', {'image': bad_file}, format='multipart',
         )
+        self.assertEqual(response.status_code, 400)
+
+    def test_history_filter_returns_only_saved_inspections(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        saved_id = response.data['id']
+        self.client.post(f'/api/inspections/{saved_id}/save/')
+
+        self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+
+        response = self.client.get('/api/inspections/', {'status': 'SAVED'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], saved_id)
+
+    def test_history_filter_rejects_invalid_status(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get('/api/inspections/', {'status': 'NOT_A_STATUS'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_image_removes_it_while_draft(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        inspection_id = response.data['id']
+
+        response = self.client.post(
+            f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart',
+        )
+        image_id = response.data['id']
+
+        response = self.client.delete(f'/api/inspections/{inspection_id}/images/{image_id}/')
+        self.assertEqual(response.status_code, 204)
+
+        response = self.client.get(f'/api/inspections/{inspection_id}/')
+        self.assertEqual(response.data['images'], [])
+
+    def test_delete_image_rejected_after_save(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        inspection_id = response.data['id']
+
+        response = self.client.post(
+            f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart',
+        )
+        image_id = response.data['id']
+        self.client.post(f'/api/inspections/{inspection_id}/save/')
+
+        response = self.client.delete(f'/api/inspections/{inspection_id}/images/{image_id}/')
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_image_denies_other_user(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'FEED', 'material_type': 'DRY_FODDER', 'storage_duration_days': 5,
+        }, format='json')
+        inspection_id = response.data['id']
+        response = self.client.post(
+            f'/api/inspections/{inspection_id}/images/', {'image': make_test_image()}, format='multipart',
+        )
+        image_id = response.data['id']
+
+        self.client.force_authenticate(user=self.other)
+        response = self.client.delete(f'/api/inspections/{inspection_id}/images/{image_id}/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_reinspect_creates_inspection_attached_to_batch(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 10,
+        }, format='json')
+        first_id = response.data['id']
+        response = self.client.post(f'/api/inspections/{first_id}/save/')
+        batch_id = response.data['batch']
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 8,
+            'batch_id': batch_id,
+        }, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['batch'], batch_id)
+
+    def test_reinspect_rejects_batch_owned_by_someone_else(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 10,
+        }, format='json')
+        first_id = response.data['id']
+        response = self.client.post(f'/api/inspections/{first_id}/save/')
+        batch_id = response.data['batch']
+
+        self.client.force_authenticate(user=self.other)
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 8,
+            'batch_id': batch_id,
+        }, format='json')
         self.assertEqual(response.status_code, 400)
 
 

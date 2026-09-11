@@ -123,6 +123,15 @@ Farmer-provided + weather data for the "Storage & Environment" / "Farmer Informa
 - [x] 10.3 View/URL — `GET /api/batches/{id}/trend/`. Verified over HTTP incl. cross-owner 403.
 - [x] 10.4 Tests — 8 new tests (service: empty/single/worsening trend, unsaved-draft exclusion; API: points shape, auth, cross-owner); 116/116 total passing
 
+## Phase 11 — Gap-analysis follow-ups (`inspections`)
+
+Closed three gaps found when comparing implementation against `project_explain.txt`/`architecture.txt`: Inspection History wasn't actually filterable to saved-only, there was no way to re-inspect an existing batch, and there was no way to remove a bad image before analyzing (architecture.txt's `BAD → RETAKE` branch).
+
+- [x] 11.1 `list_inspections_by_owner` gains optional `status` filter; `GET /api/inspections/?status=SAVED` powers the real Inspection History view
+- [x] 11.2 `create_draft_inspection` accepts optional `batch` (ownership-checked); `CreateInspectionSerializer` gains optional `batch_id` so `POST /api/inspections/` can start a re-inspection against an existing batch
+- [x] 11.3 `delete_inspection_image` (DRAFT-only) + `DELETE /api/inspections/{id}/images/{image_id}/`
+- [x] 11.4 Tests — 14 new tests (selector filter, service validation, API flows incl. cross-owner rejection); full suite passing
+
 ---
 
 ## Notes

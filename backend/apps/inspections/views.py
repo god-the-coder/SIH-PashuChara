@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -7,13 +8,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ai.exceptions import AIServiceError
+from apps.batches.selectors import get_batch_by_id
 from apps.batches.services import ensure_batch_for_inspection
 from apps.results.serializers import ResultSerializer
 from apps.results.services import analyze_inspection
 
-from .models import Inspection
+from .models import Inspection, InspectionStatus
 from .permissions import IsInspectionOwner
-from .selectors import list_inspections_by_owner
+from .selectors import get_inspection_image_by_id, list_inspections_by_owner
 from .serializers import (
     CreateInspectionSerializer,
     FollowupAnswersSerializer,
@@ -24,6 +26,7 @@ from .serializers import (
 from .services import (
     add_inspection_image,
     create_draft_inspection,
+    delete_inspection_image,
     generate_followup_questions,
     save_inspection,
     submit_followup_answers,
@@ -35,15 +38,27 @@ class InspectionListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        inspections = list_inspections_by_owner(owner=request.user)
+        status_filter = request.query_params.get('status')
+        if status_filter and status_filter not in InspectionStatus.values:
+            raise ValidationError({'status': [f'Must be one of {InspectionStatus.values}.']})
+
+        inspections = list_inspections_by_owner(owner=request.user, status=status_filter)
         return Response(InspectionSerializer(inspections, many=True).data)
 
     def post(self, request):
         serializer = CreateInspectionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        batch_id = validated_data.pop('batch_id', None)
+        batch = None
+        if batch_id is not None:
+            batch = get_batch_by_id(batch_id=batch_id)
+            if batch is None or batch.owner_id != request.user.id:
+                raise ValidationError({'batch_id': ['Batch not found.']})
 
         try:
-            inspection = create_draft_inspection(owner=request.user, **serializer.validated_data)
+            inspection = create_draft_inspection(owner=request.user, batch=batch, **validated_data)
         except DjangoValidationError as exc:
             raise ValidationError(exc.messages)
 
@@ -75,6 +90,25 @@ class InspectionImageUploadView(APIView):
             raise ValidationError(exc.messages)
 
         return Response(InspectionImageSerializer(image).data, status=status.HTTP_201_CREATED)
+
+
+class InspectionImageDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    def delete(self, request, pk, image_id):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        image = get_inspection_image_by_id(inspection=inspection, image_id=image_id)
+        if image is None:
+            raise Http404
+
+        try:
+            delete_inspection_image(inspection=inspection, image=image)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class InspectionContextView(APIView):

@@ -10,12 +10,18 @@ from weather.exceptions import WeatherServiceError
 from .models import ImageType, Inspection, InspectionImage, InspectionStatus, MaterialType
 
 
-def create_draft_inspection(*, owner, inspection_type, material_type, storage_duration_days, material_type_other=''):
+def create_draft_inspection(
+    *, owner, inspection_type, material_type, storage_duration_days, material_type_other='', batch=None,
+):
     if material_type == MaterialType.OTHER and not material_type_other:
         raise ValidationError('material_type_other is required when material_type is Other.')
 
+    if batch is not None and batch.owner_id != owner.id:
+        raise ValidationError('Cannot start a re-inspection on a batch you do not own.')
+
     inspection = Inspection(
         owner=owner,
+        batch=batch,
         inspection_type=inspection_type,
         material_type=material_type,
         material_type_other=material_type_other,
@@ -31,6 +37,13 @@ def add_inspection_image(*, inspection, image, image_type=ImageType.FRONT_GENERA
         raise ValidationError('Cannot add images to an inspection that is not in draft.')
 
     return InspectionImage.objects.create(inspection=inspection, image=image, image_type=image_type)
+
+
+def delete_inspection_image(*, inspection, image):
+    if inspection.status != InspectionStatus.DRAFT:
+        raise ValidationError('Cannot remove images from an inspection that is not in draft.')
+
+    image.delete()
 
 
 def save_inspection(*, inspection):
