@@ -1,26 +1,44 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { translations, SUPPORTED_LANGUAGES } from "../constants/translations";
+import { translations } from "../constants/translations";
+import authService from "../services/auth/authService";
+import { getApiError } from "../services/api/error";
 
 const DashboardContext = createContext(null);
 
-const DEFAULT_USER = {
-  isLoggedIn: true,
+// Shown only while the session-check on app load hasn't resolved yet.
+const CHECKING_USER = { isLoggedIn: false, isCustomName: false, name: "", role: "", phone: "" };
+
+const GUEST_USER = {
+  isLoggedIn: false,
   isCustomName: false,
-  name: "रमेश चौधरी",
-  role: "डेयरी किसान",
-  phone: "9876543210",
-  email: "ramesh.choudhary@dairyfarm.in",
+  name: "अतिथि किसान",
+  role: "लॉगिन करें",
+  phone: "",
+  email: "",
   gender: "male",
-  age: "45",
-  cattleCount: 24,
-  location: "करनाल, हरियाणा",
+  age: "",
+  cattleCount: 0,
+  location: "",
   avatar: "",
-  cattleDetails: [
-    { id: "c-1", category: "cow", breed: "साहीवाल (Sahiwal)", count: 8, milkLiters: 120, lactationStage: "दुधारू" },
-    { id: "c-2", category: "cow", breed: "गिर (Gir)", count: 4, milkLiters: 65, lactationStage: "दुधारू" },
-    { id: "c-3", category: "buffalo", breed: "मुर्राह (Murrah)", count: 12, milkLiters: 160, lactationStage: "दुधारू" },
-  ],
+  cattleDetails: [],
 };
+
+/**
+ * Maps the backend's UserSerializer shape onto the fields the UI expects.
+ * Fields the backend doesn't track yet (age, cattleCount, location, ...)
+ * are left neutral rather than fabricated — the farm/cattle phases fill
+ * these in from their own real endpoints.
+ */
+function userFromSession(apiUser) {
+  return {
+    ...GUEST_USER,
+    isLoggedIn: true,
+    isCustomName: true,
+    name: apiUser.full_name,
+    role: "",
+    phone: apiUser.phone_number,
+  };
+}
 
 export function DashboardProvider({ children }) {
   // 1. Language state (persistent)
@@ -39,19 +57,32 @@ export function DashboardProvider({ children }) {
     return localStorage.getItem("pashuchaara_fontsize") || "normal";
   });
 
-  // 4. User auth & profile state (persistent)
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pashuchaara_user");
-      return saved ? JSON.parse(saved) : DEFAULT_USER;
-    } catch {
-      return DEFAULT_USER;
-    }
-  });
+  // 4. User auth state — backed by the real session, re-checked on every load.
+  // Not persisted to localStorage: the Django session cookie is the source of truth.
+  const [user, setUser] = useState(CHECKING_USER);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authService
+      .me()
+      .then((apiUser) => {
+        if (!cancelled) setUser(userFromSession(apiUser));
+      })
+      .catch(() => {
+        if (!cancelled) setUser(GUEST_USER);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 5. Auth Modal & UI state
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalStep, setAuthModalStep] = useState("login"); // "login" | "otp" | "survey"
+  const [authModalStep, setAuthModalStep] = useState("login"); // "login" | "register"
   const [isVoiceOn, setIsVoiceOn] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: "" });
   const [notifRead, setNotifRead] = useState(false);
@@ -130,45 +161,49 @@ export function DashboardProvider({ children }) {
     showToast(t.toastAllRead || "सभी सूचनाएं पढ़ी गईं ✓");
   }, [t, showToast]);
 
-  // Auth operations
-  const login = useCallback((userData) => {
-    const isCustom = userData.isCustomName !== undefined
-      ? userData.isCustomName
-      : Boolean(userData.name && userData.name !== DEFAULT_USER.name);
-
-    const updated = {
-      ...DEFAULT_USER,
-      ...userData,
-      isLoggedIn: true,
-      isCustomName: isCustom,
-    };
-    setUser(updated);
-    localStorage.setItem("pashuchaara_user", JSON.stringify(updated));
-    showToast(`नमस्ते ${updated.name || "किसान जी"}! स्वागत है 🌾`);
+  // Auth operations — session-backed; errors are normalized (getApiError) and
+  // re-thrown so the calling form can show a field-level message.
+  const login = useCallback(async (phoneNumber, password) => {
+    try {
+      const apiUser = await authService.login({ phoneNumber, password });
+      const updated = userFromSession(apiUser);
+      setUser(updated);
+      showToast(`नमस्ते ${updated.name || "किसान जी"}! स्वागत है 🌾`);
+      return updated;
+    } catch (error) {
+      throw getApiError(error);
+    }
   }, [showToast]);
 
-  const logout = useCallback(() => {
-    const loggedOutUser = {
-      isLoggedIn: false,
-      isCustomName: false,
-      name: "अतिथि किसान",
-      role: "लॉगिन करें",
-      phone: "",
-      age: "",
-      cattleCount: 0,
-      location: "",
-    };
-    setUser(loggedOutUser);
-    localStorage.setItem("pashuchaara_user", JSON.stringify(loggedOutUser));
+  const register = useCallback(async (phoneNumber, fullName, password) => {
+    try {
+      await authService.register({ phoneNumber, fullName, password });
+      // Registration doesn't establish a session — log in immediately after.
+      const apiUser = await authService.login({ phoneNumber, password });
+      const updated = userFromSession(apiUser);
+      setUser(updated);
+      showToast(`स्वागत है ${updated.name || "किसान जी"}! खाता बन गया 🌾`);
+      return updated;
+    } catch (error) {
+      throw getApiError(error);
+    }
+  }, [showToast]);
+
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Best-effort: still clear local state even if the request fails
+      // (e.g. session already expired server-side).
+    }
+    setUser(GUEST_USER);
     showToast("सफलतापूर्वक लॉग आउट हो गया 🔒");
   }, [showToast]);
 
+  // Not backed by a real endpoint yet — these fields (age, location, cattle
+  // count, ...) have no home on the backend until the farm/cattle phases land.
   const updateProfile = useCallback((fields) => {
-    setUser((prev) => {
-      const updated = { ...prev, ...fields, isCustomName: true };
-      localStorage.setItem("pashuchaara_user", JSON.stringify(updated));
-      return updated;
-    });
+    setUser((prev) => ({ ...prev, ...fields, isCustomName: true }));
     showToast("प्रोफ़ाइल जानकारी सुरक्षित की गई! ✓");
   }, [showToast]);
 
@@ -186,24 +221,10 @@ export function DashboardProvider({ children }) {
     showToast("ऐप कैश व अस्थायी फाइलें सफलतापूर्वक साफ हुईं! 🧹");
   }, [showToast]);
 
+  // No account-deletion endpoint exists yet — this only clears local state.
   const deleteAccount = useCallback(() => {
-    localStorage.removeItem("pashuchaara_user");
     sessionStorage.clear();
-    const guestUser = {
-      isLoggedIn: false,
-      isCustomName: false,
-      name: "अतिथि किसान",
-      role: "लॉगिन करें",
-      phone: "",
-      email: "",
-      gender: "male",
-      age: "",
-      cattleCount: 0,
-      location: "",
-      avatar: "",
-      cattleDetails: [],
-    };
-    setUser(guestUser);
+    setUser(GUEST_USER);
     showToast("खाता व स्थानीय डेटा हटा दिया गया। 🗑️");
   }, [showToast]);
 
@@ -240,6 +261,7 @@ export function DashboardProvider({ children }) {
     toast,
     notifRead,
     user,
+    authChecked,
     displayName,
     displayRole,
     displayLocation,
@@ -252,6 +274,7 @@ export function DashboardProvider({ children }) {
     showToast,
     markAllRead,
     login,
+    register,
     logout,
     updateProfile,
     clearCache,

@@ -1,7 +1,39 @@
+import { useEffect, useState } from "react";
 import { useDashboard } from "../../context/DashboardContext";
+import farmService from "../../services/farm/farmService";
 
 export default function WeatherStatusCard() {
   const { t, greetingName } = useDashboard();
+  const [weather, setWeather] = useState(null);
+  const [error, setError] = useState(() => !navigator.geolocation);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        farmService
+          .getCurrentWeather(position.coords.latitude, position.coords.longitude)
+          .then((data) => {
+            if (!cancelled) setWeather(data);
+          })
+          .catch(() => {
+            if (!cancelled) setError(true);
+          });
+      },
+      () => {
+        if (!cancelled) setError(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const tempLabel = weather ? `${Math.round(weather.temperature_celsius)} C` : error ? "-" : "...";
+  const humidityLabel = weather ? `${Math.round(weather.humidity_percent)}%` : error ? "-" : "...";
+  const conditionLabel = weather ? (weather.condition || t.metricConditionVal) : error ? "-" : "...";
+
   return (
     <section>
       <div
@@ -22,9 +54,9 @@ export default function WeatherStatusCard() {
         </div>
         <div className="grid grid-cols-3 gap-2 mt-3 relative z-10">
           {[
-            { val: "28 C", label: t.metricTemp },
-            { val: "64%", label: t.metricHumidity },
-            { val: t.metricConditionVal, label: t.metricWeatherLabel },
+            { val: tempLabel, label: t.metricTemp },
+            { val: humidityLabel, label: t.metricHumidity },
+            { val: conditionLabel, label: t.metricWeatherLabel },
           ].map((m, i) => (
             <div key={i} className="px-2.5 py-2.5 rounded-xl flex flex-col" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)" }}>
               <span className="text-base font-black text-white leading-tight">{m.val}</span>

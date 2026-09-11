@@ -1,12 +1,16 @@
 import { Outlet } from 'react-router-dom'
+import { useDashboard } from '../context/DashboardContext'
 
 /**
  * Authentication boundary for application routes.
  *
- * It intentionally permits every route for now. Authentication and redirect
- * behaviour can be added here without changing the application route tree.
+ * Renders nothing until the initial session check (DashboardContext's
+ * authService.me() call) resolves, so pages never flash a logged-out state
+ * before the real session status is known.
  */
 function ProtectedRoute() {
+  const { authChecked } = useDashboard()
+  if (!authChecked) return null
   return <Outlet />
 }
 
