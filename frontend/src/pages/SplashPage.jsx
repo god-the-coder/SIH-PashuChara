@@ -5,7 +5,7 @@ import { SUPPORTED_LANGUAGES, translations } from "../constants/translations";
 
 function SplashContent() {
   const navigate = useNavigate();
-  const { lang, changeLang } = useDashboard();
+  const { lang, changeLang, t } = useDashboard();
   const [selectedLang, setSelectedLang] = useState(lang || "hi");
 
   const handleStart = () => {
@@ -19,7 +19,7 @@ function SplashContent() {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#faf6ed] dark:bg-[#0c130e] antialiased">
+    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#e8e4dc] flex justify-center bg-[#faf7f0] dark:bg-[#0a0c0b] antialiased">
       {/* Farm Background */}
       <div className="inset-0 w-full h-full pointer-events-none z-0 overflow-hidden absolute max-w-[430px] left-1/2 -translate-x-1/2">
         <img
@@ -57,24 +57,27 @@ function SplashContent() {
           </p>
 
           <p className="text-lg font-bold text-white/95 mt-4 max-w-xs leading-snug drop-shadow-md">
-            चारे की सही जाँच, अब आपके हाथ में
+            {t.splashSubtitle || "चारे की सही जाँच, अब आपके हाथ में"}
           </p>
           <p className="text-xs text-white/80 mt-2 max-w-xs leading-relaxed">
-            डेयरी किसानों के लिए स्मार्ट व तुरंत साइलेज व चारे की गुणवत्ता व फफूंद जाँच प्रणाली
+            {t.splashDesc || "डेयरी किसानों के लिए स्मार्ट व तुरंत साइलेज व चारे की गुणवत्ता व फफूंद जाँच प्रणाली"}
           </p>
 
           {/* Language selector buttons */}
           <div className="mt-8 w-full max-w-xs">
             <label className="block text-[11px] font-bold text-emerald-200 uppercase tracking-wider mb-2">
-              अपनी भाषा चुनें / Select Language
+              {t.selectLangHeader || "अपनी भाषा चुनें / Select Language"}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {SUPPORTED_LANGUAGES.map((code) => {
-                const isSelected = selectedLang === code;
+                const isSelected = (lang || selectedLang) === code;
                 return (
                   <button
                     key={code}
-                    onClick={() => setSelectedLang(code)}
+                    onClick={() => {
+                      setSelectedLang(code);
+                      changeLang(code);
+                    }}
                     className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                       isSelected
                         ? "bg-white text-[#12361d] border-white shadow-lg scale-105"
@@ -95,13 +98,13 @@ function SplashContent() {
             onClick={handleStart}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-[#0c2413] font-black text-base shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98]"
           >
-            <span>जाँच शुरू करें</span>
+            <span>{t.splashCta || "जाँच शुरू करें"}</span>
             <svg className="w-5 h-5 stroke-current stroke-[2.5]" fill="none" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
           </button>
           <p className="text-[11px] text-center text-white/70">
-            भारतीय डेयरी अनुसंधान एवं कृषि तकनीक पर आधारित
+            {t.splashFooter || "भारतीय डेयरी अनुसंधान एवं कृषि तकनीक पर आधारित"}
           </p>
         </div>
       </div>

@@ -11,10 +11,10 @@ export default function NotificationsPage() {
     {
       id: "alert-1",
       type: "weather",
-      title: "बारिश व उच्च आर्द्रता चेतावनी (84% Humidity)",
-      body: "स्थानीय मौसम में बारिश व उच्च सीलन दर्ज की गई है। खुले में रखे चारे में फफूंद पनपने का गंभीर खतरा है। कृपया तुरंत वाटरप्रूफ तिरपाल से कसकर ढकें।",
-      time: "15 मिनट पहले",
-      actionLabel: "चारे की स्थिति परखें",
+      title: t.alert1Title || "बारिश व उच्च आर्द्रता चेतावनी (84% Humidity)",
+      body: t.alert1Body || "स्थानीय मौसम में बारिश व उच्च सीलन दर्ज की गई है। खुले में रखे चारे में फफूंद पनपने का गंभीर खतरा है। कृपया तुरंत वाटरप्रूफ तिरपाल से कसकर ढकें।",
+      time: t.alert1Time || "15 मिनट पहले",
+      actionLabel: t.alert1Action || "चारे की स्थिति परखें",
       actionRoute: "/inspect/new?type=feed",
       colorClasses: "bg-amber-500/10 dark:bg-[#2d2319] border-amber-500/30",
       iconClasses: "bg-amber-500/20 text-amber-800 dark:text-[#fcd34d]",
@@ -23,21 +23,21 @@ export default function NotificationsPage() {
     {
       id: "alert-2",
       type: "reminder",
-      title: "साइलेज पिट #1 री-चेक अनुस्मारक",
-      body: "साइलेज पिट #1 की पिछली जाँच को 4 दिन हो चुके हैं। उच्च पोषण व किण्वन सुरक्षा बनाए रखने के लिए दोबारा 4 तस्वीरों की त्वरित जाँच करें।",
-      time: "2 घंटे पहले",
-      actionLabel: "साइलेज जाँच करें",
+      title: t.alert2Title || "साइलेज पिट #1 री-चेक अनुस्मारक",
+      body: t.alert2Body || "साइलेज पिट #1 की पिछली जाँच को 4 दिन हो चुके हैं। उच्च पोषण व किण्वन सुरक्षा बनाए रखने के लिए दोबारा 4 तस्वीरों की त्वरित जाँच करें।",
+      time: t.alert2Time || "2 घंटे पहले",
+      actionLabel: t.alert2Action || "साइलेज जाँच करें",
       actionRoute: "/inspect/new?type=silage",
-      colorClasses: "bg-emerald-500/10 dark:bg-[#1a3324] border-emerald-500/30",
+      colorClasses: "bg-emerald-500/10 dark:bg-[#161914] border-emerald-500/30",
       iconClasses: "bg-emerald-500/20 text-emerald-800 dark:text-[#86efac]",
       icon: "🌽",
     },
     {
       id: "alert-3",
       type: "info",
-      title: "पशु पोषण टिप: मायकोटॉक्सिन से बचाव",
-      body: "हल्की भी बदबूदार या काली फफूंद दिखने पर चारे के उस हिस्से को तुरंत अलग करें। दुधारू गायों को फफूंद युक्त चारा देने से दूध उत्पादन में 20% तक गिरावट आ सकती है।",
-      time: "कल",
+      title: t.alert3Title || "पशु पोषण टिप: मायकोटॉक्सिन से बचाव",
+      body: t.alert3Body || "हल्की भी बदबूदार या काली फफूंद दिखने पर चारे के उस हिस्से को तुरंत अलग करें। दुधारू गायों को फफूंद युक्त चारा देने से दूध उत्पादन में 20% तक गिरावट आ सकती है।",
+      time: t.alert3Time || "कल",
       actionLabel: null,
       actionRoute: null,
       colorClasses: "bg-blue-500/10 dark:bg-[#182736] border-blue-500/30",
@@ -47,8 +47,8 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#0c130e] antialiased">
-      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#111713]">
+    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#e8e4dc] flex justify-center bg-[#FAF7F0] dark:bg-[#0a0c0b] antialiased">
+      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#101210]">
         {/* Unified Sub-Page Header with global language switcher */}
         <SubPageHeader
           title={t.notifModalTitle || "सूचनाएँ एवं अलर्ट"}
@@ -77,7 +77,7 @@ export default function NotificationsPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black text-[#14351d] dark:text-white leading-tight">
+                    <h3 className="text-xs font-black text-[#064d2c] dark:text-white leading-tight">
                       {alert.title}
                     </h3>
                   </div>

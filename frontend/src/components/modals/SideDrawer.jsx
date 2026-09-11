@@ -48,12 +48,12 @@ export default function SideDrawer({ isOpen, onClose }) {
         <div
           id="sideDrawer"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto absolute inset-y-0 left-0 w-[310px] max-w-[85%] h-full bg-[#FAF7F0] dark:bg-[#141814] text-[#1c1c15] dark:text-[#f3ede2] shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-out border-r border-[#dfd5c2] dark:border-[#28382d] ${
+          className={`pointer-events-auto absolute inset-y-0 left-0 w-[310px] max-w-[85%] h-full bg-[#FAF7F0] dark:bg-[#0f1110] text-[#1c1c15] dark:text-[#e8e4dc] shadow-2xl flex flex-col justify-between transform transition-transform duration-300 ease-out border-r border-[#dfd5c2] dark:border-[#242824] ${
             isOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           {/* Header */}
-          <div className="p-5 border-b border-[#ded2bd] dark:border-[#28382d] bg-gradient-to-br from-[#12361d] to-[#0b2112] dark:from-[#163824] dark:to-[#0f2619] text-white relative">
+          <div className="p-5 border-b border-[#ded2bd] dark:border-[#242824] bg-gradient-to-br from-[#12361d] to-[#0b2112] dark:from-[#163824] dark:to-[#0f2619] text-white relative">
             <button
               aria-label="Close Drawer"
               onClick={onClose}
@@ -72,10 +72,6 @@ export default function SideDrawer({ isOpen, onClose }) {
                 <p className="text-[10px] text-emerald-200/90 dark:text-[#a8cfb4] mt-0.5 leading-tight truncate">
                   {displayLocation}
                 </p>
-                <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-300">
-                  <span className={`w-2 h-2 rounded-full ${user?.isLoggedIn ? "bg-emerald-400" : "bg-gray-400"}`} />
-                  <span>{user?.isLoggedIn ? "सत्यापित खाता" : "अतिथि खाता"}</span>
-                </div>
               </div>
             </div>
           </div>
@@ -86,39 +82,39 @@ export default function SideDrawer({ isOpen, onClose }) {
               {
                 icon: "👤",
                 title: t.menuPersonalInfoTitle || "व्यक्तिगत जानकारी",
-                sub: "नाम, आयु, फोटो, ईमेल व फोन विवरण",
+                sub: t.menuPersonalInfoSub || "नाम, आयु, फोटो, ईमेल व फोन विवरण",
                 action: "personalInfo",
               },
               {
                 icon: "🐄",
                 title: t.menuCattleInfoTitle || "पशु जानकारी",
-                sub: "नस्ल विकल्प (Gir, Sahiwal, Murrah)",
+                sub: t.menuCattleInfoSub || "नस्ल विकल्प (Gir, Sahiwal, Murrah)",
                 action: "cattleInfo",
               },
               {
                 icon: "⚙️",
                 title: t.menuSettingsTitle || "ऐप सेटिंग्स",
-                sub: "फॉन्ट आकार, कैश साफ करें व यूजर प्रबंधन",
+                sub: t.menuSettingsSub || "फॉन्ट आकार, कैश साफ करें व यूजर प्रबंधन",
                 action: "settings",
               },
               {
                 icon: "📞",
                 title: t.menuSupportTitle || "सहायता व संपर्क",
-                sub: "टोल-फ्री 1800-180-1551 व वॉयस संदेश",
+                sub: t.menuSupportSub || "टोल-फ्री 1800-180-1551 व वॉयस संदेश",
                 action: "support",
               },
             ].map(({ icon, title, sub, action }) => (
               <button
                 key={action}
                 onClick={() => handleAction(action)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] hover:bg-gray-50 dark:hover:bg-[#202b23] border border-[#e3d9c8] dark:border-[#28382d] flex items-center justify-between text-left transition-colors cursor-pointer shadow-sm"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] hover:bg-gray-50 dark:hover:bg-[#202b23] border border-[#e3d9c8] dark:border-[#242824] flex items-center justify-between text-left transition-colors cursor-pointer shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#1a3324] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
                     {icon}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-[#142817] dark:text-[#f3ede2]">{title}</div>
+                    <div className="text-xs font-bold text-[#142817] dark:text-[#e8e4dc]">{title}</div>
                     <div className="text-[10px] text-gray-500 dark:text-[#a3ada0] truncate">{sub}</div>
                   </div>
                 </div>
@@ -129,17 +125,17 @@ export default function SideDrawer({ isOpen, onClose }) {
             ))}
 
             {/* Dark mode switch row */}
-            <div className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] border border-[#e3d9c8] dark:border-[#28382d] flex items-center justify-between shadow-sm">
+            <div className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] border border-[#e3d9c8] dark:border-[#242824] flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#1a3324] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
                   {isDark ? "🌙" : "☀️"}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#142817] dark:text-[#f3ede2]">
+                  <div className="text-xs font-bold text-[#142817] dark:text-[#e8e4dc]">
                     {t.menuThemeTitle || "डार्क / लाइट मोड"}
                   </div>
                   <div className="text-[10px] text-gray-500 dark:text-[#a3ada0]">
-                    {isDark ? "डार्क थीम सक्रिय" : "लाइट थीम सक्रिय"}
+                    {isDark ? (t.drawerThemeDarkActive || "डार्क थीम सक्रिय") : (t.drawerThemeLightActive || "लाइट थीम सक्रिय")}
                   </div>
                 </div>
               </div>
@@ -161,7 +157,7 @@ export default function SideDrawer({ isOpen, onClose }) {
           </div>
 
           {/* Footer with Login / Logout Button */}
-          <div className="p-3.5 border-t border-[#ded2bd] dark:border-[#28382d] bg-[#f4ebd9] dark:bg-[#101612] flex items-center justify-between">
+          <div className="p-3.5 border-t border-[#ded2bd] dark:border-[#242824] bg-[#f4ebd9] dark:bg-[#101612] flex items-center justify-between">
             <button
               onClick={handleAuthButton}
               className={`flex items-center gap-2 text-xs font-black cursor-pointer ${

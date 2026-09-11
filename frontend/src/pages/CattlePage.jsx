@@ -92,19 +92,19 @@ export default function CattlePage() {
       : GOAT_BREEDS;
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#0c130e] antialiased">
-      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#111713]">
+    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#e8e4dc] flex justify-center bg-[#FAF7F0] dark:bg-[#0a0c0b] antialiased">
+      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#101210]">
         {/* Unified SubPageHeader with language switcher */}
         <SubPageHeader
-          title={t.menuCattleInfoTitle || "पशुधन जानकारी"}
-          subtitle="नस्ल विकल्प, संख्या व दैनिक चारा अनुपात"
+          title={t.cattlePageTitle || t.menuCattleInfoTitle || "पशुधन जानकारी"}
+          subtitle={t.cattlePageSub || "नस्ल विकल्प, संख्या व दैनिक चारा अनुपात"}
           backTo="/dashboard"
           actionBtn={
             <button
               onClick={() => setModalOpen(true)}
               className="px-2.5 py-1.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-95"
             >
-              + नया पशु
+              {t.addNewCattleBtn || "+ नया पशु"}
             </button>
           }
         />
@@ -113,28 +113,28 @@ export default function CattlePage() {
         <main className="p-4 space-y-3.5 flex-1 overflow-y-auto">
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-xs">
-              <span className="text-xl font-black text-[#14351d] dark:text-white block">
+            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-xs">
+              <span className="text-xl font-black text-[#064d2c] dark:text-white block">
                 {totalCattleCount}
               </span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
-                कुल पशु 🐄
+                {t.totalCattleMetric || t.totalCattleLabel || "कुल पशु 🐄"}
               </span>
             </div>
-            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-xs">
-              <span className="text-xl font-black text-[#14351d] dark:text-white block">
+            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-xs">
+              <span className="text-xl font-black text-[#064d2c] dark:text-white block">
                 {totalMilk} L
               </span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
-                दैनिक दूध 🥛
+                {t.dailyMilkMetric || t.milkingCattleLabel || "दैनिक दूध 🥛"}
               </span>
             </div>
-            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-xs">
-              <span className="text-xl font-black text-[#14351d] dark:text-white block">
+            <div className="p-3 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-xs">
+              <span className="text-xl font-black text-[#064d2c] dark:text-white block">
                 {dailyFodderKg} kg
               </span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">
-                चारा खपत 🌾
+                {t.fodderConsumptionMetric || t.dailyFodderLabel || "चारा खपत 🌾"}
               </span>
             </div>
           </div>
@@ -144,11 +144,11 @@ export default function CattlePage() {
             <div className="flex items-center gap-2.5">
               <span className="text-2xl animate-pulse">🎙️</span>
               <div>
-                <span className="text-xs font-black text-[#14351d] dark:text-white block">
-                  बोलकर पशु विवरण जोड़ें
+                <span className="text-xs font-black text-[#064d2c] dark:text-white block">
+                  {t.voiceFillBannerTitle || "बोलकर पशु विवरण जोड़ें"}
                 </span>
                 <span className="text-[10px] text-gray-600 dark:text-gray-300">
-                  गाय, भैंस, नस्ल व संख्या बोलें
+                  {t.voiceFillBannerSub || "गाय, भैंस, नस्ल व संख्या बोलें"}
                 </span>
               </div>
             </div>
@@ -161,36 +161,36 @@ export default function CattlePage() {
                   : "bg-[#2D5A3D] hover:bg-[#1E442B] text-white"
               }`}
             >
-              {isListening ? "सुन रहे हैं..." : "बोलें 🎙️"}
+              {isListening ? (t.listeningText || "सुन रहे हैं...") : (t.speakBtnText || "बोलें 🎙️")}
             </button>
           </div>
 
           {/* Cattle List by Breeds */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-black uppercase text-[#14351d] dark:text-[#a8cfb4] tracking-wider px-1">
-              पंजीकृत पशु व नस्लें (Registered Breeds)
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider px-1">
+              {t.registeredBreedsTitle || "पंजीकृत पशु व नस्लें (Registered Breeds)"}
             </h3>
 
             {cattleList.map((item) => (
               <div
                 key={item.id}
-                className="p-3.5 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-sm flex items-center justify-between"
+                className="p-3.5 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-[#faf6ed] dark:bg-[#121914] border border-[#ded5c2] dark:border-[#28382d] flex items-center justify-center text-xl shrink-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#ded5c2] dark:border-[#242824] flex items-center justify-center text-xl shrink-0">
                     {item.category === "cow" ? "🐄" : item.category === "buffalo" ? "🐃" : "🐐"}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-black text-[#14351d] dark:text-white">
+                      <h4 className="text-xs font-black text-[#064d2c] dark:text-white">
                         {item.breed}
                       </h4>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-[#1b3d27] text-emerald-800 dark:text-[#86efac] text-[9px] font-black">
-                        {item.count} पशु
+                        {item.count} {t.cattleCow?.split(" ")[0] || "पशु"}
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      स्थिति: {item.lactationStage} • दूध: ~{item.milkLiters} ली/दिन
+                      {item.lactationStage || t.cattleStatusLactating} • ~{item.milkLiters} {t.milkPerDayUnit || "ली/दिन"}
                     </p>
                   </div>
                 </div>
@@ -209,10 +209,10 @@ export default function CattlePage() {
           {/* Feeding Advice */}
           <div className="p-4 rounded-3xl bg-[#0f3821] text-white shadow-md border border-emerald-600/30 space-y-2">
             <span className="text-xs font-black uppercase text-emerald-300 tracking-wider block">
-              📊 नस्ल अनुसार आहार आवश्यकता
+              {t.breedFeedingAdviceTitle || "📊 नस्ल अनुसार आहार आवश्यकता"}
             </span>
             <p className="text-xs text-emerald-100/90 leading-relaxed">
-              गिर और साहीवाल गायों के लिए प्रति पशु 18-22 कि.ग्रा. साइलेज व 4 कि.ग्रा. दाना मिश्रण अनुशंसित है। मुर्राह भैंसों को अधिक वसा और ऊर्जा हेतु 25 कि.ग्रा. साइलेज दें।
+              {t.breedFeedingAdviceText || "गिर और साहीवाल गायों के लिए प्रति पशु 18-22 कि.ग्रा. साइलेज व 4 कि.ग्रा. दाना मिश्रण अनुशंसित है।"}
             </p>
           </div>
         </main>
@@ -220,10 +220,10 @@ export default function CattlePage() {
         {/* Add Cattle Modal */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#FAF7F0] dark:bg-[#16201a] w-full max-w-sm rounded-3xl p-5 border border-[#ded5c2] dark:border-[#28382d] shadow-2xl">
-              <div className="flex items-center justify-between pb-3 border-b border-[#ded5c2] dark:border-[#28382d]">
-                <h3 className="text-sm font-black text-[#14351d] dark:text-white">
-                  नया पशु विवरण जोड़ें
+            <div className="bg-[#FAF7F0] dark:bg-[#16201a] w-full max-w-sm rounded-3xl p-5 border border-[#ded5c2] dark:border-[#242824] shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-[#ded5c2] dark:border-[#242824]">
+                <h3 className="text-sm font-black text-[#064d2c] dark:text-white">
+                  {t.addCattleModalTitle || "नया पशु विवरण जोड़ें"}
                 </h3>
                 <button
                   onClick={() => setModalOpen(false)}
@@ -237,13 +237,13 @@ export default function CattlePage() {
                 {/* Category */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    1. पशु का प्रकार (Type of Cattle)
+                    {t.cattleTypeLabel || "1. पशु का प्रकार (Type of Cattle)"}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "cow", label: "गाय 🐄" },
-                      { id: "buffalo", label: "भैंस 🐃" },
-                      { id: "goat", label: "बकरी 🐐" },
+                      { id: "cow", label: t.cattleCow || "गाय 🐄" },
+                      { id: "buffalo", label: t.cattleBuffalo || "भैंस 🐃" },
+                      { id: "goat", label: t.cattleGoat || "बकरी 🐐" },
                     ].map((cat) => (
                       <button
                         type="button"
@@ -255,7 +255,7 @@ export default function CattlePage() {
                         className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           newCattle.category === cat.id
                             ? "bg-[#2D5A3D] text-white border-[#2D5A3D] shadow-xs"
-                            : "bg-white dark:bg-[#121914] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                            : "bg-white dark:bg-[#0f1411] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#242824]"
                         }`}
                       >
                         {cat.label}
@@ -267,12 +267,12 @@ export default function CattlePage() {
                 {/* Breed options */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    2. नस्ल का चयन (Breed Option)
+                    {t.cattleBreedLabel || "2. नस्ल का चयन (Breed Option)"}
                   </label>
                   <select
                     value={newCattle.breed}
                     onChange={(e) => setNewCattle({ ...newCattle, breed: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
                   >
                     {currentBreeds.map((b) => (
                       <option key={b} value={b}>
@@ -286,7 +286,7 @@ export default function CattlePage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      3. संख्या (Count)
+                      {t.cattleCountSubLabel || "3. संख्या (Count)"}
                     </label>
                     <input
                       type="number"
@@ -294,19 +294,19 @@ export default function CattlePage() {
                       min={1}
                       value={newCattle.count}
                       onChange={(e) => setNewCattle({ ...newCattle, count: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      4. दूध (Liters/day)
+                      {t.cattleMilkYieldLabel || "4. दूध (Liters/day)"}
                     </label>
                     <input
                       type="number"
                       value={newCattle.milkLiters}
                       onChange={(e) => setNewCattle({ ...newCattle, milkLiters: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
                     />
                   </div>
                 </div>
@@ -317,13 +317,13 @@ export default function CattlePage() {
                     onClick={() => setModalOpen(false)}
                     className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer"
                   >
-                    रद्द करें
+                    {t.cancel || "रद्द करें"}
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-2 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-md cursor-pointer"
                   >
-                    पशु रिकॉर्ड जोड़ें
+                    {t.saveCattleBtn || "पशु रिकॉर्ड जोड़ें"}
                   </button>
                 </div>
               </form>

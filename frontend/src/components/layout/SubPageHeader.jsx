@@ -26,7 +26,7 @@ export default function SubPageHeader({
   }, []);
 
   return (
-    <header className="px-4 py-3 bg-[#FAF7F0]/95 dark:bg-[#141814]/95 backdrop-blur-md border-b border-[#ded5c2] dark:border-[#28382d] flex items-center justify-between sticky top-0 z-30 shadow-xs">
+    <header className="px-4 py-3 bg-[#FAF7F0]/95 dark:bg-[#0f1110]/95 backdrop-blur-md border-b border-[#ded5c2] dark:border-[#242824] flex items-center justify-between sticky top-0 z-30 shadow-xs">
       <div className="flex items-center gap-2.5 min-w-0">
         <button
           onClick={() => {
@@ -39,7 +39,7 @@ export default function SubPageHeader({
           ←
         </button>
         <div className="min-w-0">
-          <h1 className="text-sm font-black text-[#14351d] dark:text-[#f3ede2] truncate">
+          <h1 className="text-sm font-black text-[#064d2c] dark:text-[#e8e4dc] truncate">
             {title}
           </h1>
           {subtitle && (
@@ -58,7 +58,7 @@ export default function SubPageHeader({
             <button
               onClick={() => setLangMenuOpen((o) => !o)}
               aria-label="Change Language"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#1c271e] border border-[#ded5c2] dark:border-[#2a3c2c] text-[11px] font-bold text-[#14351d] dark:text-gray-200 shadow-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243327]"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-[11px] font-bold text-[#064d2c] dark:text-gray-200 shadow-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243327]"
             >
               <span>🌐</span>
               <span className="font-semibold">{translations[lang]?.langLabel || "हिन्दी"}</span>
@@ -73,7 +73,7 @@ export default function SubPageHeader({
             </button>
 
             {langMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-[#162218] rounded-2xl shadow-xl border border-[#ded5c2] dark:border-[#283b2a] py-1 z-50 text-xs font-semibold overflow-hidden">
+              <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-[#141714] rounded-2xl shadow-xl border border-[#ded5c2] dark:border-[#283b2a] py-1 z-50 text-xs font-semibold overflow-hidden">
                 {SUPPORTED_LANGUAGES.map((code) => (
                   <button
                     key={code}
@@ -81,7 +81,7 @@ export default function SubPageHeader({
                       changeLang(code);
                       setLangMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-1.5 flex items-center justify-between text-[#14351d] dark:text-[#f3ede2] hover:bg-emerald-50 dark:hover:bg-[#203624] transition-colors cursor-pointer"
+                    className="w-full text-left px-3 py-1.5 flex items-center justify-between text-[#064d2c] dark:text-[#e8e4dc] hover:bg-emerald-50 dark:hover:bg-[#203624] transition-colors cursor-pointer"
                   >
                     <span>{translations[code]?.langLabel || code}</span>
                     {lang === code && (

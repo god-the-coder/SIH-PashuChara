@@ -2,10 +2,6 @@ import axios from 'axios'
 import { API_BASE_URL } from '../../config/env'
 import { toApiRequestError } from './error'
 
-const CSRF_COOKIE_NAME = 'csrftoken'
-const CSRF_HEADER_NAME = 'X-CSRFToken'
-const CSRF_SAFE_METHODS = new Set(['get', 'head', 'options', 'trace'])
-
 /**
  * The single HTTP client for PashuChara-AI.
  *
@@ -22,27 +18,8 @@ const apiClient = axios.create({
   },
 })
 
-function readCookie(name) {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
-}
-
-/**
- * Django's session auth only enforces CSRF once a request carries an
- * authenticated session (see backend apps.accounts.views), so the cookie is
- * only guaranteed to exist after login/me — this attaches it whenever present.
- */
 apiClient.interceptors.request.use(
-  (config) => {
-    const method = (config.method || 'get').toLowerCase()
-    if (!CSRF_SAFE_METHODS.has(method)) {
-      const token = readCookie(CSRF_COOKIE_NAME)
-      if (token) {
-        config.headers[CSRF_HEADER_NAME] = token
-      }
-    }
-    return config
-  },
+  (config) => config,
   (error) => Promise.reject(error),
 )
 

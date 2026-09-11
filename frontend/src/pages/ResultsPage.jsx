@@ -18,48 +18,46 @@ export default function ResultsPage() {
     riskLevel: "low",
     statusLabel: t.safeStatus || "ठीक (खिलाने योग्य)",
     confidence: "high",
-    summary: "साइलेज का रंग अच्छा हरा-पीला है और किण्वन सामान्य दिख रहा है। कोई दिखाई देने वाली फफूंद या सड़न नहीं पाई गई। भंडारण शेड सूखा और सुरक्षित है।",
-    estimatedUsabilityWindow: "4-6 दिन में नियमित उपयोग करें और अच्छी तरह ढकें",
+    summary: t.resultSummary || "साइलेज का रंग अच्छा हरा-पीला है और किण्वन सामान्य दिख रहा है। कोई दिखाई देने वाली फफूंद या सड़न नहीं पाई गई। भंडारण शेड सूखा और सुरक्षित है।",
+    estimatedUsabilityWindow: t.resultUsability || "4-6 दिन में नियमित उपयोग करें और अच्छी तरह ढकें",
     reasons: [
-      "सामने व साइड की परतों में कोई सफेद या काली फफूंद के धब्बे नहीं दिखे।",
-      "चारे की कतरन (chop length) सही है और नमी का स्तर सामान्य प्रतीत होता है।",
-      "भंडारण स्थान पर सीधा पानी या सीलन का संपर्क नहीं है।",
+      t.reason1 || "सामने व साइड की परतों में कोई सफेद या काली फफूंद के धब्बे नहीं दिखे।",
+      t.reason2 || "चारे की कतरन (chop length) सही है और नमी का स्तर सामान्य प्रतीत होता है।",
+      t.reason3 || "भंडारण स्थान पर सीधा पानी या सीलन का संपर्क नहीं है।",
     ],
     recommendations: [
-      "साइलेज निकालते समय हवा के संपर्क को कम करने के लिए परत से सीधा काटें।",
-      "दैनिक खुराक निकालने के तुरंत बाद तिरपाल को पत्थरों या टायरों से कसकर दबाएँ।",
-      "बदलते मौसम और अधिक आर्द्रता के कारण हर 3-4 दिन में दोबारा जाँच करें।",
+      t.rec1 || "साइलेज निकालते समय हवा के संपर्क को कम करने के लिए परत से सीधा काटें।",
+      t.rec2 || "दैनिक खुराक निकालने के तुरंत बाद तिरपाल को पत्थरों या टायरों से कसकर दबाएँ।",
+      t.rec3 || "बदलते मौसम और अधिक आर्द्रता के कारण हर 3-4 दिन में दोबारा जाँच करें।",
     ],
     visualIndicators: [
-      { name: "रंग व ताजगी", status: "अच्छा (हरी-पीली बनावट)" },
-      { name: "फफूंद / सड़न", status: "नहीं दिखी (सुरक्षित)" },
-      { name: "भंडारण सुरक्षा", status: "सुरक्षित व ढका हुआ" },
+      { name: t.qualityStatusBadge || "रंग व ताजगी", status: t.safeStatus || "सुरक्षित" },
     ],
   };
 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: "पशुचारा AI जाँच रिपोर्ट",
-        text: `${fodderType} की जाँच रिपोर्ट: स्थिति - ${resultData.statusLabel}. ${resultData.summary}`,
+        title: t.shareReportTitle || "पशुचारा AI जाँच रिपोर्ट",
+        text: `${fodderType}: ${resultData.statusLabel}. ${resultData.summary}`,
       }).catch(() => {});
     } else {
-      showToast("रिपोर्ट लिंक कॉपी हो गया! 📋");
+      showToast(t.toastAllRead ? "रिपोर्ट लिंक कॉपी हो गया! 📋" : "Report link copied! 📋");
     }
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#0c130e] antialiased">
-      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#111713]">
+    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#e8e4dc] flex justify-center bg-[#FAF7F0] dark:bg-[#0a0c0b] antialiased">
+      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#101210]">
         {/* Unified Sub-Page Header with global language switcher */}
         <SubPageHeader
           title={t.resultsHeaderTitle || "AI गुणवत्ता जाँच रिपोर्ट"}
-          subtitle="आईडी: #PC-9482 • आज"
+          subtitle={t.reportIdToday || "आईडी: #PC-9482 • आज"}
           backTo="/dashboard"
           actionBtn={
             <button
               onClick={handleShare}
-              className="w-8 h-8 rounded-xl bg-white dark:bg-[#1c271e] border border-[#ded5c2] dark:border-[#2a3c2c] text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-gray-50"
+              className="w-8 h-8 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-gray-50"
             >
               📤
             </button>
@@ -98,8 +96,8 @@ export default function ResultsPage() {
           </div>
 
           {/* Key Findings Card */}
-          <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-sm space-y-3">
-            <h3 className="text-xs font-black uppercase text-[#14351d] dark:text-[#a8cfb4] tracking-wider">
+          <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
               {t.keyFindingsHeader || "मुख्य दृश्य निरीक्षण (Key Findings)"}
             </h3>
             <ul className="space-y-2">
@@ -113,8 +111,8 @@ export default function ResultsPage() {
           </div>
 
           {/* Recommendations Card */}
-          <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#28382d] shadow-sm space-y-3">
-            <h3 className="text-xs font-black uppercase text-[#14351d] dark:text-[#a8cfb4] tracking-wider">
+          <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
               {t.recommendationsHeader || "किसान सलाह एवं सावधानियां"}
             </h3>
             <ul className="space-y-2">
