@@ -60,13 +60,13 @@ A subphase is checked off only after verification (Django `check`, migration app
 
 ## Phase 5 — `results`
 
-- [ ] 5.1 Models
-- [ ] 5.2 Selectors
-- [ ] 5.3 Services
-- [ ] 5.4 Serializers
-- [ ] 5.5 Permissions
-- [ ] 5.6 Views & URLs
-- [ ] 5.7 Tests
+- [x] 5.1 Models — `Result` (OneToOne to Inspection, risk_category, summary, confidence, findings JSON, requires_lab_testing), migration applied, admin registered
+- [x] 5.2 Selectors — `get_result_by_inspection`
+- [x] 5.3 Services — `record_result` (SAVED-only, one result per inspection)
+- [x] 5.4 Serializers — `ResultSerializer` (read-only)
+- [x] 5.5 Permissions — `IsResultOwner` (via inspection.owner)
+- [x] 5.6 Views & URLs — `GET /api/results/{inspection_id}/` (read-only, owner-checked, no public write yet)
+- [x] 5.7 Tests — 10 tests covering selectors, services, permission, and API flow
 
 ## Phase 6 — `recommendations`
 
