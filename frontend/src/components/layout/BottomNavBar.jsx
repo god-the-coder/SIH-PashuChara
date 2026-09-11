@@ -79,14 +79,14 @@ export default function BottomNavBar() {
         <div className="flex flex-col items-center justify-center flex-1 py-1">
           <button
             id="nav-scan"
-            onClick={() => navigate("/inspect/new")}
+            onClick={() => navigate("/qr-report")}
             className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg cursor-pointer transition-transform active:scale-95 hover:brightness-110"
             style={{ background: "linear-gradient(135deg, #059652 0%, #10b96a 100%)" }}
           >
             <ScanIcon />
           </button>
           <span className="text-[10px] mt-1 font-semibold text-[#059652] leading-none">
-            {t.navScan || "Scan"}
+            QR Report
           </span>
         </div>
 

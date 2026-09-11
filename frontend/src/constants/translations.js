@@ -354,7 +354,17 @@ export const translations = {
     "defaultFarmLocation": "करनाल, हरियाणा",
     "defaultStorageType": "बंकर गड्ढा व कवर्ड शेड",
     "farmUpdatedToast": "फार्म विवरण सफलतापूर्वक अपडेट हो गया! ✓",
-    "farmerRoleLabel": "डेयरी किसान"
+    "farmerRoleLabel": "डेयरी किसान",
+    "moreInfoBtn": "अधिक जानकारी →",
+    "getFullReportBtn": "पूरी लैब रिपोर्ट प्राप्त करें",
+    "labReportTitle": "चारा गुणवत्ता प्रयोगशाला प्रमाण-पत्र",
+    "validUntil": "मान्यता तिथि",
+    "scanHistoryTitle": "जाँच इतिहास (नवीनतम 2)",
+    "shareReport": "रिपोर्ट साझा करें",
+    "printReport": "प्रिंट / PDF डाउनलोड",
+    "moreInfoPageTitle": "त्वरित विवरण",
+    "moreInfoPageSub": "AI जाँच विश्लेषण सारांश",
+    "batchUpdatedToast": "बैच जाँच अपडेट की गई ✓"
   },
   "en": {
     "langLabel": "English",
@@ -710,7 +720,17 @@ export const translations = {
     "defaultFarmLocation": "Karnal, Haryana",
     "defaultStorageType": "Bunker Pit & Covered Shed",
     "farmUpdatedToast": "Farm details updated successfully! ✓",
-    "farmerRoleLabel": "Dairy Farmer"
+    "farmerRoleLabel": "Dairy Farmer",
+    "moreInfoBtn": "More Info →",
+    "getFullReportBtn": "Get Full Lab Report",
+    "labReportTitle": "Fodder Quality Lab Certificate",
+    "validUntil": "Valid Until",
+    "scanHistoryTitle": "Inspection History (Latest 2)",
+    "shareReport": "Share Report",
+    "printReport": "Download / Print PDF",
+    "moreInfoPageTitle": "Quick Summary",
+    "moreInfoPageSub": "AI Scan Analysis Summary",
+    "batchUpdatedToast": "Batch inspection updated ✓"
   },
   "mr": {
     "langLabel": "मराठी",
@@ -1372,7 +1392,17 @@ export const translations = {
     "alert2Time": "૨ કલાક પહેલાં",
     "alert3Title": "પોષણ ટીપ: માયકોટૉક્સિનથી બચાવ",
     "alert3Body": "સહેજ પણ દુર્ગંધ કે કાળી ફૂગ દેખાય તો તે ભાગને તરત અલગ કરો. ફૂગયુક્ત ચારો દૂધ ઉત્પાદનમાં ૨૦% ઘટાડો કરી શકે છે.",
-    "alert3Time": "ગઈકાલે"
+    "alert3Time": "ગઈકાલે",
+    "moreInfoBtn": "વધુ માહિતી →",
+    "getFullReportBtn": "સંપૂર્ણ લૅબ રિપોર્ટ",
+    "labReportTitle": "ઘાસચારો ગુણવત્તા પ્રમાણ-પત્ર",
+    "validUntil": "માન્ય સુધી",
+    "scanHistoryTitle": "તપાસ ઇતિહાસ (છેલ્લા 2)",
+    "shareReport": "રિપોર્ટ શૅર કરો",
+    "printReport": "PDF ડાઉનલોડ / પ્રિન્ટ",
+    "moreInfoPageTitle": "ઝડપી સારાંશ",
+    "moreInfoPageSub": "AI સ્કૅન વિશ્લેષણ",
+    "batchUpdatedToast": "બૅચ તપાસ અપડેટ ✓"
   },
   "kn": {
     "langLabel": "ಕನ್ನಡ",
@@ -1703,7 +1733,17 @@ export const translations = {
     "alert2Time": "೨ ಗಂಟೆಗಳ ಹಿಂದೆ",
     "alert3Title": "ಪೋಷಣೆ ಸಲಹೆ: ಮೈಕೋಟಾಕ್ಸಿನ್ ತಡೆಗಟ್ಟುವಿಕೆ",
     "alert3Body": "ಸ್ವಲ್ಪ ಕೆಟ್ಟ ವಾಸನೆ ಅಥವಾ ಕಪ್ಪು ಬೂಜು ಕಂಡರೆ ಆ ಭಾಗವನ್ನು ತಕ್ಷಣ ಬೇರ್ಪಡಿಸಿ. ಹಾಲು ಉತ್ಪಾದನೆ ೨೦% ಕಡಿಮೆಯಾಗಬಹುದು.",
-    "alert3Time": "ನಿನ್ನೆ"
+    "alert3Time": "ನಿನ್ನೆ",
+    "moreInfoBtn": "ಹೆಚ್ಚಿನ ಮಾಹಿತಿ →",
+    "getFullReportBtn": "ಸಂಪೂರ್ಣ ಲ್ಯಾಬ್ ವರದಿ",
+    "labReportTitle": "ಮೇವಿನ ಗುಣಮಟ್ಟ ಪ್ರಮಾಣಪತ್ರ",
+    "validUntil": "ಮಾನ್ಯ ದಿನಾಂಕ",
+    "scanHistoryTitle": "ತಪಾಸಣಾ ಇತಿಹಾಸ (ಕೊನೆ 2)",
+    "shareReport": "ವರದಿ ಹಂಚಿ",
+    "printReport": "PDF ಡೌನ್‌ಲೋಡ / ಮುದ್ರಣ",
+    "moreInfoPageTitle": "ಸ್ವಲ್ಪ ಸಾರಾಂಶ",
+    "moreInfoPageSub": "AI ಸ್ಕ್ಯಾನ್ ವಿಶ್ಲೇಷಣೆ",
+    "batchUpdatedToast": "ಬ್ಯಾಚ್ ತಪಾಸಣೆ ಅಪ್‌ಡೇಟ್ ✓"
   },
   "ta": {
     "langLabel": "தமிழ்",
@@ -2034,7 +2074,17 @@ export const translations = {
     "alert2Time": "2 மணி நேரத்திற்கு முன்",
     "alert3Title": "ஊட்டச்சத்து குறிப்பு: பூஞ்சை நச்சு தடுப்பு",
     "alert3Body": "துர்நாற்றம் அல்லது கருப்பு பூஞ்சை தெரிந்தால் அந்த பகுதியை உடனே அகற்றவும். பால் உற்பத்தி 20% குறையக்கூடும்.",
-    "alert3Time": "நேற்று"
+    "alert3Time": "நேற்று",
+    "moreInfoBtn": "மேலும் தகவல் →",
+    "getFullReportBtn": "முழு ஆய்வக அறிக்கை",
+    "labReportTitle": "தீவன தர சான்றிதழ்",
+    "validUntil": "செல்லுபடியாகும் தேதி",
+    "scanHistoryTitle": "ஆய்வு வரலாறு (கடந்த 2)",
+    "shareReport": "அறிக்கையை பகிர்",
+    "printReport": "PDF பதிவிறக்கம் / அச்சு",
+    "moreInfoPageTitle": "விரைவு சுருக்கம்",
+    "moreInfoPageSub": "AI ஸ்கேன் பகுப்பாய்வு",
+    "batchUpdatedToast": "தொகுதி ஆய்வு புதுப்பிக்கப்பட்டது ✓"
   }
 };
 

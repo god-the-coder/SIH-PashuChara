@@ -102,15 +102,14 @@ export default function HistoryPage() {
           {filtered.map((item) => (
             <div
               key={item.id}
-              onClick={() => navigate(`/results/${item.id}`)}
-              className="p-3.5 rounded-2xl bg-white dark:bg-[#161c18] border border-[#ded5c2] dark:border-[#242824] shadow-sm hover:border-emerald-600 dark:hover:border-emerald-500 transition-all cursor-pointer"
+              className="p-3.5 rounded-2xl bg-white dark:bg-[#161c18] border border-[#ded5c2] dark:border-[#242824] shadow-sm transition-all"
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-black text-[#064d2c] dark:text-[#e8e4dc]">
                   {item.type}
                 </span>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${item.statusColor}`}>
-                  {item.status}
+                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500">
+                  #{item.id}
                 </span>
               </div>
               <p className="text-xs text-gray-600 dark:text-[#a8b8ab] leading-snug">
@@ -118,9 +117,12 @@ export default function HistoryPage() {
               </p>
               <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
                 <span>📅 {item.date} • {item.time}</span>
-                <span className="font-bold text-emerald-800 dark:text-emerald-400">
-                  {t.viewReportBtn || "रिपोर्ट देखें →"}
-                </span>
+                <button
+                  onClick={() => navigate(`/history/${item.id}/info`)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-400 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-[#1e3828] cursor-pointer transition-colors"
+                >
+                  {t.moreInfoBtn || "अधिक जानकारी →"}
+                </button>
               </div>
             </div>
           ))}

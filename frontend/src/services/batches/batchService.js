@@ -1,8 +1,9 @@
-/**
- * Batch endpoint placeholder.
- *
- * Add contract-backed methods here when the backend API is confirmed.
- */
-const batchService = {}
+import apiClient from '../api/client'
+
+const batchService = {
+  resolveByCode(batchCode) {
+    return apiClient.get(`/batches/by-code/${encodeURIComponent(batchCode)}/`)
+  },
+}
 
 export default batchService

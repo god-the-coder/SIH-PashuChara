@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import { getActiveBatch, getBatchAgeDays } from "../utils/batchStore";
 
 const IcoPlant = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -66,6 +67,7 @@ export default function NewInspectionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fodderType = searchParams.get("type") || "silage";
+  const activeBatch = getActiveBatch();
   const { t, showToast } = useDashboard();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -133,7 +135,7 @@ export default function NewInspectionPage() {
 
         <SubPageHeader
           title={isSilage ? (t.inspectSilageTitle || "Silage Inspection") : (t.inspectFeedTitle || "Feed Inspection")}
-          subtitle={"Photo " + (currentStep + 1) + " of 4"}
+          subtitle={activeBatch ? `${activeBatch.id} · ${getBatchAgeDays(activeBatch)} days old` : "Photo " + (currentStep + 1) + " of 4"}
           backTo="/dashboard"
           actionBtn={
             <button
@@ -152,6 +154,17 @@ export default function NewInspectionPage() {
         />
 
         <main className="flex-1 flex flex-col gap-3 px-4 pt-3 pb-4 overflow-y-auto">
+
+          {activeBatch && (
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900/60 dark:bg-[#102117]">
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Inspecting existing batch</p>
+              <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
+                <div><span className="block text-[10px] text-gray-500">Batch ID</span><b>{activeBatch.id}</b></div>
+                <div><span className="block text-[10px] text-gray-500">Batch type</span><b>{activeBatch.typeLabel || activeBatch.typeKey}</b></div>
+                <div><span className="block text-[10px] text-gray-500">Age</span><b>{getBatchAgeDays(activeBatch)} days</b></div>
+              </div>
+            </section>
+          )}
 
           {/* Step tab bar */}
           <div className="grid grid-cols-4 gap-1.5">

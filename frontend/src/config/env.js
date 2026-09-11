@@ -1,8 +1,5 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
-if (!apiBaseUrl) {
-  throw new Error('VITE_API_BASE_URL must be defined to use the API client.')
-}
 
 /**
  * Runtime API configuration exposed by Vite.

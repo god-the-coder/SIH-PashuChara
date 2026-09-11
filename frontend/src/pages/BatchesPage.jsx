@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import { getBatchAgeDays, getBatches, saveBatches, setActiveBatch } from "../utils/batchStore";
 
 export default function BatchesPage() {
   const navigate = useNavigate();
   const { t, showToast } = useDashboard();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const [batches, setBatches] = useState([
+  const [batches, setBatches] = useState(getBatches);
+  /*
     {
       id: "batch-1",
       labelKey: "batchPit1Corn",
@@ -22,6 +24,10 @@ export default function BatchesPage() {
       statusKey: "batchMature",
       statusColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
       lastInspectionRisk: "low",
+      scanHistory: [
+        { date: "02 Sep 2026", moisture: "63.1%", ph: "4.3", qualityScore: "B+", statusKey: "batchMature" },
+        { date: "11 Sep 2026", moisture: "62.4%", ph: "4.1", qualityScore: "A",  statusKey: "batchMature" },
+      ],
     },
     {
       id: "batch-2",
@@ -35,8 +41,11 @@ export default function BatchesPage() {
       statusKey: "batchInUse",
       statusColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
       lastInspectionRisk: "medium",
+      scanHistory: [
+        { date: "09 Sep 2026", moisture: "71.0%", ph: "5.8", qualityScore: "B", statusKey: "batchInUse" },
+      ],
     },
-  ]);
+  ]); */
 
   const [newBatchName, setNewBatchName] = useState("");
   const [newBatchTypeKey, setNewBatchTypeKey] = useState("batchTypeCorn");
@@ -46,22 +55,51 @@ export default function BatchesPage() {
     e.preventDefault();
     if (!newBatchName) return;
     const newEntry = {
-      id: `batch-${Date.now()}`,
+      id: `PC-${String(Date.now()).slice(-6)}`,
+      batchNumber: `BN-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
       labelKey: "",
       customLabel: newBatchName,
       typeKey: newBatchTypeKey,
+      typeLabel: t[newBatchTypeKey] || newBatchTypeKey,
+      inspectionType: newBatchTypeKey === "batchTypeCorn" ? "silage" : "feed",
       storageKey: "storagePit",
-      createdDateKey: "batchDateToday",
-      ageDays: 0,
+      createdAt: new Date().toISOString(),
       quantityKg: Number(newBatchQty) || 1000,
       statusKey: "batchFresh",
       statusColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
       lastInspectionRisk: "low",
     };
-    setBatches([newEntry, ...batches]);
+    const updated = [newEntry, ...batches];
+    setBatches(updated);
+    saveBatches(updated);
     setModalOpen(false);
     setNewBatchName("");
     showToast(t.batchAddedToast || "New fodder batch added successfully! 📦");
+  };
+
+  // Update existing batch in-place; keep only latest 2 scans
+  const updateBatchInspection = (batchId, newScanData) => {
+    setBatches((prev) =>
+      prev.map((batch) => {
+        if (batch.id !== batchId) return batch;
+        const existingScans = batch.scanHistory || [];
+        const updatedScans = [newScanData, ...existingScans].slice(0, 2);
+        return {
+          ...batch,
+          lastTested: newScanData.date,
+          statusKey: newScanData.statusKey || batch.statusKey,
+          scanHistory: updatedScans,
+        };
+      })
+    );
+    showToast(t.batchUpdatedToast || "Batch inspection updated ✓");
+  };
+
+  // Expose via sessionStorage contract for InspectionQuestionnairePage
+  // It writes pashuchaara_inspect_result on complete; we watch and merge
+  const handleInspect = (batch) => {
+    setActiveBatch(batch);
+    navigate(`/inspect/new?batchId=${batch.id}&type=${batch.inspectionType || "feed"}`);
   };
 
   return (
@@ -103,6 +141,7 @@ export default function BatchesPage() {
             const displayType = t[batch.typeKey] || batch.typeKey;
             const displayStorage = t[batch.storageKey] || batch.storageKey;
             const displayStatus = t[batch.statusKey] || batch.statusKey;
+            const ageDays = getBatchAgeDays(batch);
 
             return (
               <div
@@ -117,6 +156,7 @@ export default function BatchesPage() {
                     <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                       {displayType}
                     </span>
+                    <span className="block mt-1 text-[10px] font-mono text-gray-500 dark:text-gray-400">Batch ID: {batch.id}</span>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold ${batch.statusColor}`}>
                     {displayStatus}
@@ -129,7 +169,7 @@ export default function BatchesPage() {
                       {t.batchAgeLabel || "भंडारण आयु:"}
                     </span>
                     <div className="text-xs font-black text-[#064d2c] dark:text-white mt-0.5">
-                      {batch.ageDays} {t.daysUnit || "दिन"}
+                      {ageDays} {t.daysUnit || "दिन"}
                     </div>
                   </div>
                   <div className="p-2 rounded-xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#ded5c2] dark:border-[#242824]">
@@ -147,7 +187,7 @@ export default function BatchesPage() {
                     {displayStorage}
                   </span>
                   <button
-                    onClick={() => navigate(`/inspect/new?type=silage&batchId=${batch.id}`)}
+                    onClick={() => handleInspect(batch)}
                     className="px-3 py-1 rounded-xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-[#86efac] text-xs font-bold border border-emerald-300 dark:border-emerald-700/50 hover:bg-emerald-100 dark:hover:bg-[#20402e] cursor-pointer"
                   >
                     {t.inspectBatchBtn || "जाँचें →"}

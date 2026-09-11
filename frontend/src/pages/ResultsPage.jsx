@@ -8,6 +8,7 @@ export default function ResultsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t, showToast } = useDashboard();
+  const batchId = id === "latest" ? (sessionStorage.getItem("pashuchaara_active_batch_id") || "PC-9482") : id;
 
   const rawImages = sessionStorage.getItem("pashuchaara_temp_images");
   const capturedImages = rawImages ? JSON.parse(rawImages) : null;
@@ -52,7 +53,7 @@ export default function ResultsPage() {
         {/* Unified Sub-Page Header with global language switcher */}
         <SubPageHeader
           title={t.resultsHeaderTitle || "AI गुणवत्ता जाँच रिपोर्ट"}
-          subtitle={t.reportIdToday || "आईडी: #PC-9482 • आज"}
+          subtitle={`Batch ID: ${batchId} · Updated today`}
           backTo="/dashboard"
           actionBtn={
             <button
@@ -127,6 +128,12 @@ export default function ResultsPage() {
 
           {/* Action Button */}
           <div className="pt-1 pb-2">
+            <button
+              onClick={() => navigate(`/history/${batchId}/report`)}
+              className="mb-2 w-full py-3 rounded-2xl border border-emerald-700 bg-white text-xs font-black text-emerald-800 dark:bg-[#181e18] dark:text-emerald-300"
+            >
+              View updated PDF report
+            </button>
             <button
               onClick={() => navigate("/inspect/new")}
               className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"

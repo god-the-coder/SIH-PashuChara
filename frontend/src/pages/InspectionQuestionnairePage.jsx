@@ -2,14 +2,30 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import { getActiveBatch, getBatchAgeDays, getBatchReport, saveBatchAnalysis } from "../utils/batchStore";
 
 export default function InspectionQuestionnairePage() {
   const navigate = useNavigate();
   const { t, showToast } = useDashboard();
+  const activeBatch = getActiveBatch();
+  const batchAgeDays = getBatchAgeDays(activeBatch);
+  const fodderOptions = [
+    { id: "corn", label: t.qFodderCorn || "मक्का साइलेज" },
+    { id: "green", label: t.qFodderGreen || "हरा चारा" },
+    { id: "straw", label: t.qFodderStraw || "सूखा भूसा" },
+  ];
+  const storageOptions = [
+    { id: "fresh", label: t.qStorageToday || "आज काटा (Fresh)" },
+    { id: "1-3", label: t.qStorage1to3 || "1-3 दिन" },
+    { id: "4-7", label: t.qStorage4to7 || "4-7 दिन" },
+    { id: "custom", label: "Add days" },
+  ];
+  const batchFodderId = activeBatch?.typeKey === "batchTypeCorn" ? "corn" : activeBatch?.typeKey === "batchTypeStraw" ? "straw" : "green";
 
   const [formData, setFormData] = useState({
-    fodderType: "मक्का साइलेज",
-    storageDuration: "1-3 दिन",
+    fodderType: activeBatch ? (activeBatch.typeLabel || activeBatch.typeKey) : fodderOptions[0].label,
+    storageDuration: activeBatch ? `${batchAgeDays} days` : storageOptions[1].label,
+    customStorageDays: "",
     covered: "हाँ (तिरपाल/शेड से ढका है)",
     badSmell: "सामान्य/मीठी गंध (Normal)",
     dailyUsage: "तुरंत दुधारू पशुओं को खिलाना है",
@@ -20,12 +36,39 @@ export default function InspectionQuestionnairePage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    sessionStorage.setItem("pashuchaara_temp_answers", JSON.stringify(formData));
+    const submittedFormData = {
+      ...formData,
+      storageDuration: formData.storageDuration === "__custom_days__" ? `${formData.customStorageDays || 0} days` : formData.storageDuration,
+    };
+
+    // Normalize and persist farmer history
+    const activeBatchId = activeBatch?.id || sessionStorage.getItem("pashuchaara_active_batch_id") || "PC-9482";
+    const farmerRecord = {
+      feedType: submittedFormData.fodderType,
+      storageDuration: submittedFormData.storageDuration,
+      storageCondition: formData.covered.includes("हाँ") ? "Good (Covered / शेड सुरक्षित)" : "Poor (Open / खुला)",
+      moistureExposure: formData.covered.includes("नहीं") ? "Yes (उच्च नमी जोखिम)" : "Controlled / नियंत्रित",
+      farmerObservation: formData.badSmell,
+      dailyUsage: formData.dailyUsage,
+      rawAnswers: submittedFormData,
+      recordedAt: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    };
+
+    sessionStorage.setItem("pashuchaara_temp_answers", JSON.stringify(submittedFormData));
+    saveBatchAnalysis(activeBatchId, submittedFormData);
+    localStorage.setItem("pashuchaara_latest_farmer_history", JSON.stringify(farmerRecord));
+    localStorage.setItem(`pashuchaara_farmer_history_${activeBatchId}`, JSON.stringify(farmerRecord));
+
+    try {
+      const allHist = JSON.parse(localStorage.getItem("pashuchaara_all_farmer_submissions") || "[]");
+      allHist.unshift({ batchId: activeBatchId, ...farmerRecord });
+      localStorage.setItem("pashuchaara_all_farmer_submissions", JSON.stringify(allHist.slice(0, 10)));
+    } catch (_) {}
 
     // Simulate AI diagnostic pipeline
     setTimeout(() => {
       setIsSubmitting(false);
-      navigate("/results/latest");
+      navigate(`/results/${activeBatchId}`);
     }, 1200);
   };
 
@@ -43,6 +86,26 @@ export default function InspectionQuestionnairePage() {
             </span>
           }
         />
+
+        {activeBatch && (() => {
+          const priorReport = getBatchReport(activeBatch.id);
+          return (
+            <div className="mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 leading-snug">
+                Batch {activeBatch.id} · {activeBatch.typeLabel || activeBatch.typeKey} · {getBatchAgeDays(activeBatch)} days old
+              </p>
+              {priorReport && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/history/${activeBatch.id}/report`)}
+                  className="shrink-0 px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                >
+                  {t.viewLastReport || "पिछली रिपोर्ट →"}
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Loading Overlay */}
         {isSubmitting && (
@@ -67,11 +130,11 @@ export default function InspectionQuestionnairePage() {
               {t.q1Label || "1. चारे का प्रकार क्या है?"}
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: "corn", label: t.qFodderCorn || "मक्का साइलेज" },
-                { id: "green", label: t.qFodderGreen || "हरा चारा" },
-                { id: "straw", label: t.qFodderStraw || "सूखा भूसा" },
-              ].map((item) => (
+              {activeBatch ? (
+                <div className="col-span-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs font-black text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  {formData.fodderType} <span className="ml-1 text-[10px] font-semibold">Locked from batch</span>
+                </div>
+              ) : fodderOptions.map((item) => (
                 <button
                   type="button"
                   key={item.id}
@@ -94,18 +157,17 @@ export default function InspectionQuestionnairePage() {
               {t.q2Label || "2. यह कितने समय से रखा है?"}
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: "fresh", label: t.qStorageToday || "आज काटा (Fresh)" },
-                { id: "1-3", label: t.qStorage1to3 || "1-3 दिन" },
-                { id: "4-7", label: t.qStorage4to7 || "4-7 दिन" },
-                { id: "week+", label: t.qStorageWeekPlus || "1 सप्ताह से अधिक" },
-              ].map((item) => (
+              {activeBatch ? (
+                <div className="col-span-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs font-black text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  {batchAgeDays} days old <span className="ml-1 text-[10px] font-semibold">Locked from batch</span>
+                </div>
+              ) : storageOptions.map((item) => (
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => setFormData({ ...formData, storageDuration: item.label })}
+                  onClick={() => setFormData({ ...formData, storageDuration: item.id === "custom" ? "__custom_days__" : item.label })}
                   className={`py-2 px-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                    formData.storageDuration === item.label
+                    (item.id === "custom" ? formData.storageDuration === "__custom_days__" : formData.storageDuration === item.label)
                       ? "bg-[#2D5A3D] text-white border-[#2D5A3D] shadow-xs"
                       : "bg-[#faf7f0] dark:bg-[#0f1110] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#242824]"
                   }`}
@@ -114,6 +176,20 @@ export default function InspectionQuestionnairePage() {
                 </button>
               ))}
             </div>
+            {!activeBatch && formData.storageDuration === "__custom_days__" && (
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-[#ded5c2] bg-[#faf7f0] px-3 py-2 dark:border-[#242824] dark:bg-[#0f1110]">
+                <input
+                  type="number"
+                  min="8"
+                  required
+                  value={formData.customStorageDays}
+                  onChange={(e) => setFormData({ ...formData, customStorageDays: e.target.value })}
+                  placeholder="Number of days"
+                  className="w-full bg-transparent text-xs font-bold outline-none"
+                />
+                <span className="text-xs font-semibold text-gray-500">days</span>
+              </div>
+            )}
           </div>
 
           {/* Tarp / Covered */}

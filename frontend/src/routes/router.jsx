@@ -12,12 +12,16 @@ import InspectionQuestionnairePage from '../pages/InspectionQuestionnairePage'
 import ResultsPage from '../pages/ResultsPage'
 import BatchesPage from '../pages/BatchesPage'
 import HistoryPage from '../pages/HistoryPage'
+import MoreInfoPage from '../pages/MoreInfoPage'
+import LabReportPage from '../pages/LabReportPage'
 import NotificationsPage from '../pages/NotificationsPage'
 import FarmPage from '../pages/FarmPage'
 import ProfilePage from '../pages/ProfilePage'
 import CattlePage from '../pages/CattlePage'
 import SettingsPage from '../pages/SettingsPage'
 import SupportPage from '../pages/SupportPage'
+import QrReportScannerPage from '../pages/QrReportScannerPage'
+import CloudBatchReportPage from '../pages/CloudBatchReportPage'
 import RootLayout from '../layouts/RootLayout'
 
 export const router = createBrowserRouter([
@@ -73,6 +77,14 @@ export const router = createBrowserRouter([
         element: <NewInspectionPage />,
       },
       {
+        path: '/qr-report',
+        element: <QrReportScannerPage />,
+      },
+      {
+        path: '/qr-report/batch/:batchCode',
+        element: <CloudBatchReportPage />,
+      },
+      {
         path: '/inspect/questions',
         element: <InspectionQuestionnairePage />,
       },
@@ -87,6 +99,14 @@ export const router = createBrowserRouter([
       {
         path: '/history',
         element: <HistoryPage />,
+      },
+      {
+        path: '/history/:id/info',
+        element: <MoreInfoPage />,
+      },
+      {
+        path: '/history/:id/report',
+        element: <LabReportPage />,
       },
       {
         path: '/notifications',
