@@ -1,15 +1,28 @@
+from unittest.mock import patch
+
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.inspections.models import InspectionType, MaterialType
-from apps.inspections.services import create_draft_inspection, save_inspection
+from apps.inspections.services import add_inspection_image, create_draft_inspection, save_inspection
 
 from .models import RiskCategory
 from .permissions import IsResultOwner
 from .selectors import get_result_by_inspection
-from .services import record_result
+from .services import analyze_inspection, record_result
+
+
+def make_test_image():
+    import io
+
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new('RGB', (10, 10), color='green').save(buf, format='JPEG')
+    buf.seek(0)
+    return SimpleUploadedFile('test.jpg', buf.read(), content_type='image/jpeg')
 
 
 def make_saved_inspection(owner):
@@ -68,6 +81,49 @@ class RecordResultServiceTests(TestCase):
         record_result(inspection=inspection, risk_category=RiskCategory.LOW, summary='ok')
         with self.assertRaises(ValidationError):
             record_result(inspection=inspection, risk_category=RiskCategory.HIGH, summary='dup')
+
+
+class AnalyzeInspectionServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876510007', full_name='Owner', password='StrongPass123',
+        )
+        self.inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=30,
+        )
+
+    def test_analyze_inspection_requires_image(self):
+        with self.assertRaises(ValidationError):
+            analyze_inspection(inspection=self.inspection)
+
+    @patch('apps.results.services.analyze_material')
+    def test_analyze_inspection_creates_result_and_recommendations(self, mock_analyze):
+        mock_analyze.return_value = {
+            'summary': 'Some mold visible.', 'headline': 'Mould detected', 'confidence': 90,
+            'indicators': [{'severity': 'severe'}], 'requires_lab_testing': False,
+        }
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+
+        result = analyze_inspection(inspection=self.inspection)
+
+        self.assertEqual(result.risk_category, RiskCategory.HIGH)
+        self.assertEqual(result.headline, 'Mould detected')
+        self.assertTrue(result.requires_lab_testing)
+        self.assertTrue(result.recommendations.exists())
+        image.image.delete(save=False)
+
+    @patch('apps.results.services.analyze_material')
+    def test_analyze_inspection_rejects_duplicate(self, mock_analyze):
+        mock_analyze.return_value = {
+            'summary': 'ok', 'headline': 'fine', 'confidence': 90, 'indicators': [],
+        }
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+        analyze_inspection(inspection=self.inspection)
+
+        with self.assertRaises(ValidationError):
+            analyze_inspection(inspection=self.inspection)
+        image.image.delete(save=False)
 
 
 class IsResultOwnerPermissionTests(TestCase):

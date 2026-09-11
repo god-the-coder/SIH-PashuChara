@@ -100,11 +100,11 @@ Spec finalized against real UI mockups (detailed inspection report + quick resul
   - `Inspection`: added `followup_qa` JSONField (AI-generated Q&A, stage 1 of the two-stage analysis)
   - `record_result` no longer requires `SAVED` status — analysis happens while DRAFT, save happens after (matches architecture.txt flow order)
   - Migrations applied; serializers/admin updated; 63/63 tests passing
-- [ ] 8.2 `backend/ai/` package — Gemini client (`generate_followup_questions`, `analyze_material`), reads `GEMINI_API_KEY` from env
-- [ ] 8.3 Django Risk Engine — `classify_risk(findings)`, `default_recommendations_for_category(risk_category)` (deterministic v1 rules)
-- [ ] 8.4 Services — `inspections.generate_followup_questions`/`submit_followup_answers`; `results.analyze_inspection` orchestration
-- [ ] 8.5 Views & URLs — `POST /api/inspections/{id}/questions/`, `POST /api/inspections/{id}/questions/answer/`, `POST /api/inspections/{id}/analyze/`
-- [ ] 8.6 Tests — Gemini client mocked, no real API calls
+- [x] 8.2 `backend/ai/` package — Gemini client (`generate_followup_questions`, `analyze_material`), reads `GEMINI_KEY`/`GEMINI_MODEL` from env; verified against the live Gemini API with the user's real key
+- [x] 8.3 Django Risk Engine — `classify_risk(findings)`, `default_recommendations_for_category(risk_category)` (deterministic v1 rules); verified LOW/CAUTION/HIGH/UNCERTAIN thresholds and default recommendation sets
+- [x] 8.4 Services — `inspections.generate_followup_questions`/`submit_followup_answers`/`read_inspection_images`; `results.analyze_inspection` orchestration (AI → Risk Engine → record_result → default recommendations). Verified full pipeline live against real Gemini API + real DB. Switched default model to stable `gemini-3.5-flash` after `gemini-3.6-flash` proved unreliable (503s under normal load)
+- [x] 8.5 Views & URLs — `POST /api/inspections/{id}/questions/`, `POST /api/inspections/{id}/questions/answer/`, `POST /api/inspections/{id}/analyze/`. Full HTTP flow verified live end-to-end (create → image → questions → answer → analyze → result), including one-result-per-inspection and cross-owner rejection
+- [x] 8.6 Tests — 27 new tests (risk engine, mocked AI client, mocked service orchestration, mocked view flow); 90/90 total passing, zero real network calls in the suite
 
 ## Phase 9 — Extended inspection input (small, follow-up to Phase 8)
 

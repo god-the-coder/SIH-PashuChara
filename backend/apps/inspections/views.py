@@ -6,13 +6,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ai.exceptions import AIServiceError
 from apps.batches.services import ensure_batch_for_inspection
+from apps.results.serializers import ResultSerializer
+from apps.results.services import analyze_inspection
 
 from .models import Inspection
 from .permissions import IsInspectionOwner
 from .selectors import list_inspections_by_owner
-from .serializers import CreateInspectionSerializer, InspectionImageSerializer, InspectionSerializer
-from .services import add_inspection_image, create_draft_inspection, save_inspection
+from .serializers import CreateInspectionSerializer, FollowupAnswersSerializer, InspectionImageSerializer, InspectionSerializer
+from .services import (
+    add_inspection_image,
+    create_draft_inspection,
+    generate_followup_questions,
+    save_inspection,
+    submit_followup_answers,
+)
 
 
 class InspectionListCreateView(APIView):
@@ -77,3 +86,55 @@ class InspectionSaveView(APIView):
         inspection.refresh_from_db()
 
         return Response(InspectionSerializer(inspection).data)
+
+
+class InspectionQuestionsView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    def post(self, request, pk):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        try:
+            inspection = generate_followup_questions(inspection=inspection)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+        except AIServiceError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(InspectionSerializer(inspection).data)
+
+
+class InspectionAnswerQuestionsView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    def post(self, request, pk):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        serializer = FollowupAnswersSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            inspection = submit_followup_answers(inspection=inspection, answers=serializer.validated_data['answers'])
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+
+        return Response(InspectionSerializer(inspection).data)
+
+
+class InspectionAnalyzeView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    def post(self, request, pk):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        try:
+            result = analyze_inspection(inspection=inspection)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+        except AIServiceError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(ResultSerializer(result).data, status=status.HTTP_201_CREATED)

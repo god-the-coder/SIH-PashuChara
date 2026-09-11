@@ -1,4 +1,5 @@
 import io
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -6,12 +7,19 @@ from django.test import TestCase
 from PIL import Image
 from rest_framework.test import APIClient
 
+from ai.exceptions import AIServiceError
 from apps.accounts.models import User
 
 from .models import InspectionStatus, InspectionType, MaterialType
 from .permissions import IsInspectionOwner
 from .selectors import get_inspection_by_id, list_images_by_inspection, list_inspections_by_owner
-from .services import add_inspection_image, create_draft_inspection, save_inspection
+from .services import (
+    add_inspection_image,
+    create_draft_inspection,
+    generate_followup_questions,
+    save_inspection,
+    submit_followup_answers,
+)
 
 
 def make_test_image(name='test.jpg'):
@@ -191,3 +199,116 @@ class InspectionApiTests(TestCase):
             f'/api/inspections/{inspection_id}/images/', {'image': bad_file}, format='multipart',
         )
         self.assertEqual(response.status_code, 400)
+
+
+class FollowupQuestionServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876540008', full_name='Owner', password='StrongPass123',
+        )
+        self.inspection = create_draft_inspection(
+            owner=self.owner, inspection_type=InspectionType.SILAGE,
+            material_type=MaterialType.SILAGE, storage_duration_days=10,
+        )
+
+    def test_generate_followup_questions_requires_image(self):
+        with self.assertRaises(ValidationError):
+            generate_followup_questions(inspection=self.inspection)
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_generate_followup_questions_stores_questions(self, mock_generate):
+        mock_generate.return_value = ['Any smell?', 'Any mold?']
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+
+        generate_followup_questions(inspection=self.inspection)
+
+        self.assertEqual(
+            self.inspection.followup_qa,
+            [{'question': 'Any smell?', 'answer': None}, {'question': 'Any mold?', 'answer': None}],
+        )
+        image.image.delete(save=False)
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_generate_followup_questions_rejects_when_not_draft(self, mock_generate):
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+        save_inspection(inspection=self.inspection)
+
+        with self.assertRaises(ValidationError):
+            generate_followup_questions(inspection=self.inspection)
+        mock_generate.assert_not_called()
+        image.image.delete(save=False)
+
+    def test_submit_followup_answers_requires_existing_questions(self):
+        with self.assertRaises(ValidationError):
+            submit_followup_answers(inspection=self.inspection, answers=['yes'])
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_submit_followup_answers_rejects_count_mismatch(self, mock_generate):
+        mock_generate.return_value = ['Q1?', 'Q2?']
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+        generate_followup_questions(inspection=self.inspection)
+
+        with self.assertRaises(ValidationError):
+            submit_followup_answers(inspection=self.inspection, answers=['only one'])
+        image.image.delete(save=False)
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_submit_followup_answers_fills_answers(self, mock_generate):
+        mock_generate.return_value = ['Q1?', 'Q2?']
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+        generate_followup_questions(inspection=self.inspection)
+
+        submit_followup_answers(inspection=self.inspection, answers=['A1', 'A2'])
+
+        self.assertEqual(
+            self.inspection.followup_qa,
+            [{'question': 'Q1?', 'answer': 'A1'}, {'question': 'Q2?', 'answer': 'A2'}],
+        )
+        image.image.delete(save=False)
+
+
+class AIEndpointApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.owner = User.objects.create_user(
+            phone_number='+919876540009', full_name='Owner', password='StrongPass123',
+        )
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.post('/api/inspections/', {
+            'inspection_type': 'SILAGE', 'material_type': 'SILAGE', 'storage_duration_days': 30,
+        }, format='json')
+        self.inspection_id = response.data['id']
+        self.client.post(
+            f'/api/inspections/{self.inspection_id}/images/', {'image': make_test_image()}, format='multipart',
+        )
+
+    @patch('apps.inspections.views.generate_followup_questions')
+    def test_questions_endpoint_returns_502_on_ai_failure(self, mock_generate):
+        mock_generate.side_effect = AIServiceError('provider down')
+        response = self.client.post(f'/api/inspections/{self.inspection_id}/questions/')
+        self.assertEqual(response.status_code, 502)
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_full_ai_flow_mocked(self, mock_generate):
+        mock_generate.return_value = ['Any smell?']
+
+        response = self.client.post(f'/api/inspections/{self.inspection_id}/questions/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['followup_qa']), 1)
+
+        response = self.client.post(
+            f'/api/inspections/{self.inspection_id}/questions/answer/', {'answers': ['No smell.']}, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['followup_qa'][0]['answer'], 'No smell.')
+
+        with patch('apps.results.services.analyze_material') as mock_analyze:
+            mock_analyze.return_value = {
+                'summary': 'Looks fine.', 'headline': 'No issues', 'confidence': 90, 'indicators': [],
+            }
+            response = self.client.post(f'/api/inspections/{self.inspection_id}/analyze/')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['risk_category'], 'LOW')
+        self.assertEqual(len(response.data['recommendations']), 1)

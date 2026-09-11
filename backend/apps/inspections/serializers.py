@@ -17,9 +17,12 @@ class InspectionSerializer(serializers.ModelSerializer):
         model = Inspection
         fields = (
             'id', 'batch', 'inspection_type', 'material_type', 'material_type_other',
-            'storage_duration_days', 'status', 'created_at', 'updated_at', 'saved_at', 'images',
+            'storage_duration_days', 'status', 'followup_qa',
+            'created_at', 'updated_at', 'saved_at', 'images',
         )
-        read_only_fields = ('id', 'batch', 'status', 'created_at', 'updated_at', 'saved_at', 'images')
+        read_only_fields = (
+            'id', 'batch', 'status', 'followup_qa', 'created_at', 'updated_at', 'saved_at', 'images',
+        )
 
 
 class CreateInspectionSerializer(serializers.Serializer):
@@ -27,3 +30,7 @@ class CreateInspectionSerializer(serializers.Serializer):
     material_type = serializers.ChoiceField(choices=Inspection._meta.get_field('material_type').choices)
     material_type_other = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     storage_duration_days = serializers.IntegerField(min_value=0)
+
+
+class FollowupAnswersSerializer(serializers.Serializer):
+    answers = serializers.ListField(child=serializers.CharField(allow_blank=True), allow_empty=False)
