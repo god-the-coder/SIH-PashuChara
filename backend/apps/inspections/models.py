@@ -28,6 +28,13 @@ class Inspection(models.Model):
         on_delete=models.CASCADE,
         related_name='inspections',
     )
+    batch = models.ForeignKey(
+        'batches.Batch',
+        on_delete=models.SET_NULL,
+        related_name='inspections',
+        null=True,
+        blank=True,
+    )
     inspection_type = models.CharField(max_length=16, choices=InspectionType.choices)
     material_type = models.CharField(max_length=32, choices=MaterialType.choices)
     material_type_other = models.CharField(max_length=100, blank=True)

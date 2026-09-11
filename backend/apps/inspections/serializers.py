@@ -16,10 +16,10 @@ class InspectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Inspection
         fields = (
-            'id', 'inspection_type', 'material_type', 'material_type_other',
+            'id', 'batch', 'inspection_type', 'material_type', 'material_type_other',
             'storage_duration_days', 'status', 'created_at', 'updated_at', 'saved_at', 'images',
         )
-        read_only_fields = ('id', 'status', 'created_at', 'updated_at', 'saved_at', 'images')
+        read_only_fields = ('id', 'batch', 'status', 'created_at', 'updated_at', 'saved_at', 'images')
 
 
 class CreateInspectionSerializer(serializers.Serializer):

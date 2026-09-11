@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.batches.services import ensure_batch_for_inspection
+
 from .models import Inspection
 from .permissions import IsInspectionOwner
 from .selectors import list_inspections_by_owner
@@ -70,5 +72,8 @@ class InspectionSaveView(APIView):
             inspection = save_inspection(inspection=inspection)
         except DjangoValidationError as exc:
             raise ValidationError(exc.messages)
+
+        ensure_batch_for_inspection(inspection=inspection)
+        inspection.refresh_from_db()
 
         return Response(InspectionSerializer(inspection).data)
