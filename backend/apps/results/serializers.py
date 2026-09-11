@@ -11,7 +11,7 @@ class ResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = (
-            'id', 'risk_category', 'summary', 'confidence',
+            'id', 'risk_category', 'risk_score', 'headline', 'action_label', 'summary', 'confidence',
             'findings', 'requires_lab_testing', 'created_at', 'recommendations',
         )
         read_only_fields = fields

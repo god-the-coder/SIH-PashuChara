@@ -41,21 +41,25 @@ class RecordResultServiceTests(TestCase):
             phone_number='+919876510002', full_name='Owner', password='StrongPass123',
         )
 
-    def test_record_result_rejects_draft_inspection(self):
+    def test_record_result_allows_draft_inspection(self):
+        # Analysis happens before the farmer decides to save (architecture.txt flow).
         inspection = create_draft_inspection(
             owner=self.owner, inspection_type=InspectionType.FEED,
             material_type=MaterialType.DRY_FODDER, storage_duration_days=3,
         )
-        with self.assertRaises(ValidationError):
-            record_result(inspection=inspection, risk_category=RiskCategory.LOW, summary='ok')
+        result = record_result(inspection=inspection, risk_category=RiskCategory.LOW, summary='ok')
+        self.assertEqual(result.inspection, inspection)
 
     def test_record_result_creates_result_for_saved_inspection(self):
         inspection = make_saved_inspection(self.owner)
         result = record_result(
             inspection=inspection, risk_category=RiskCategory.CAUTION, summary='Some mold visible.',
+            risk_score=55, headline='Mould detected', action_label='Corrective actions',
             confidence=80, findings={'mold': True}, requires_lab_testing=True,
         )
         self.assertEqual(result.inspection, inspection)
+        self.assertEqual(result.risk_score, 55)
+        self.assertEqual(result.headline, 'Mould detected')
         self.assertEqual(result.confidence, 80)
         self.assertTrue(result.requires_lab_testing)
 

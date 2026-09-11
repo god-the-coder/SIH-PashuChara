@@ -42,6 +42,7 @@ class Inspection(models.Model):
     status = models.CharField(
         max_length=8, choices=InspectionStatus.choices, default=InspectionStatus.DRAFT,
     )
+    followup_qa = models.JSONField(default=list, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

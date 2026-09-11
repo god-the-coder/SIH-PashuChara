@@ -82,6 +82,8 @@ A subphase is checked off only after verification (Django `check`, migration app
 
 Wire the existing empty `frontend/src/services/<feature>/<feature>Service.js` placeholders to the real endpoints built above.
 
+**Owned by another team member** — not tracked here for now. Backend endpoints for `accounts`, `farms`, `inspections`, `batches`, `results` are complete and ready to integrate against.
+
 - [ ] 7.1 `authService`
 - [ ] 7.2 `farmService`
 - [ ] 7.3 `inspectionService`
@@ -90,10 +92,30 @@ Wire the existing empty `frontend/src/services/<feature>/<feature>Service.js` pl
 
 ## Phase 8 — AI integration
 
-- [ ] 8.1 `ai/` area scaffolding, decoupled from Django domain layer
-- [ ] 8.2 Gemini request/response contract (images + context in, structured findings out)
-- [ ] 8.3 Django Risk Engine (structured findings → LOW/CAUTION/HIGH/UNCERTAIN)
-- [ ] 8.4 Wire into `results` / `recommendations` services
+Spec finalized against real UI mockups (detailed inspection report + quick result screen) shared by the user — this supersedes the earlier "placeholder pending AI spec" caveat on `results`/`recommendations`.
+
+- [x] 8.1 Model updates for the finalized report shape:
+  - `Result`: added `risk_score` (0-100), `headline`, `action_label`
+  - `Recommendation`: added `action_type` (GENERAL/SELL_FEED/LAB_TEST/VET_SUPPORT), `urgency` (IMMEDIATE/CORRECTIVE/VERIFICATION)
+  - `Inspection`: added `followup_qa` JSONField (AI-generated Q&A, stage 1 of the two-stage analysis)
+  - `record_result` no longer requires `SAVED` status — analysis happens while DRAFT, save happens after (matches architecture.txt flow order)
+  - Migrations applied; serializers/admin updated; 63/63 tests passing
+- [ ] 8.2 `backend/ai/` package — Gemini client (`generate_followup_questions`, `analyze_material`), reads `GEMINI_API_KEY` from env
+- [ ] 8.3 Django Risk Engine — `classify_risk(findings)`, `default_recommendations_for_category(risk_category)` (deterministic v1 rules)
+- [ ] 8.4 Services — `inspections.generate_followup_questions`/`submit_followup_answers`; `results.analyze_inspection` orchestration
+- [ ] 8.5 Views & URLs — `POST /api/inspections/{id}/questions/`, `POST /api/inspections/{id}/questions/answer/`, `POST /api/inspections/{id}/analyze/`
+- [ ] 8.6 Tests — Gemini client mocked, no real API calls
+
+## Phase 9 — Extended inspection input (small, follow-up to Phase 8)
+
+Farmer-provided data needed for the "Storage & Environment" / "Farmer Information" report sections.
+
+- [ ] 9.1 `Inspection`: `temperature_celsius`, `humidity_percent`, `storage_condition`, `moisture_exposure`, `farmer_observation` (all optional)
+- [ ] 9.2 `InspectionImage`: `image_type` (FRONT/SIDE/MACRO/STORAGE)
+
+## Phase 10 — Batch risk trend (small, follow-up to Phase 8)
+
+- [ ] 10.1 Read endpoint aggregating a batch's saved inspections' results (risk_score + headline, ordered by date) for the "Risk Trend" report section
 
 ---
 

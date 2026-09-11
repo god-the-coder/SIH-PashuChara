@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.inspections.models import Inspection
@@ -11,8 +12,8 @@ class RiskCategory(models.TextChoices):
 
 
 class Result(models.Model):
-    """AI-generated visual assessment for a saved inspection. Placeholder shape,
-    pending the finalized AI output specification (see project_explain.txt § 10)."""
+    """AI-generated visual assessment for an inspection. Structure agreed against
+    the PashuChara AI inspection-report mockups (risk trend, detailed report)."""
 
     inspection = models.OneToOneField(
         Inspection,
@@ -20,6 +21,11 @@ class Result(models.Model):
         related_name='result',
     )
     risk_category = models.CharField(max_length=16, choices=RiskCategory.choices)
+    risk_score = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    headline = models.CharField(max_length=150, blank=True)
+    action_label = models.CharField(max_length=100, blank=True)
     summary = models.TextField()
     confidence = models.FloatField(null=True, blank=True)
     findings = models.JSONField(default=dict, blank=True)
