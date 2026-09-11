@@ -4,18 +4,22 @@ from .models import Farm
 from .selectors import get_farm_by_owner
 
 
-def create_farm(*, owner, farm_name, location):
+def create_farm(*, owner, farm_name, location, total_cattle=0):
     if get_farm_by_owner(owner=owner) is not None:
         raise ValidationError('This farmer already has a farm registered.')
 
-    return Farm.objects.create(owner=owner, farm_name=farm_name, location=location)
+    return Farm.objects.create(
+        owner=owner, farm_name=farm_name, location=location, total_cattle=total_cattle,
+    )
 
 
-def update_farm(*, farm, farm_name=None, location=None):
+def update_farm(*, farm, farm_name=None, location=None, total_cattle=None):
     if farm_name is not None:
         farm.farm_name = farm_name
     if location is not None:
         farm.location = location
+    if total_cattle is not None:
+        farm.total_cattle = total_cattle
 
     farm.full_clean()
     farm.save()

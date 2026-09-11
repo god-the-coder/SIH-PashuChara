@@ -12,6 +12,7 @@ class Farm(models.Model):
     )
     farm_name = models.CharField(max_length=150)
     location = models.CharField(max_length=255)
+    total_cattle = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

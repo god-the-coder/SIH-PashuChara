@@ -1,8 +1,36 @@
+import apiClient from '../api/client'
+import { getApiError } from '../api/error'
+
 /**
- * Farm endpoint placeholder.
- *
- * Add contract-backed methods here when the backend API is confirmed.
+ * Farm endpoints — one farm per farmer, at /api/farms/me/.
  */
-const farmService = {}
+const farmService = {
+  async getMyFarm() {
+    try {
+      return await apiClient.get('/api/farms/me/')
+    } catch (error) {
+      const apiError = getApiError(error)
+      // No farm registered yet is a normal state, not a failure.
+      if (apiError.status === 404) return null
+      throw apiError
+    }
+  },
+
+  createFarm({ farmName, location, totalCattle }) {
+    return apiClient.post('/api/farms/me/', {
+      farm_name: farmName,
+      location,
+      total_cattle: totalCattle,
+    })
+  },
+
+  updateFarm({ farmName, location, totalCattle }) {
+    const payload = {}
+    if (farmName !== undefined) payload.farm_name = farmName
+    if (location !== undefined) payload.location = location
+    if (totalCattle !== undefined) payload.total_cattle = totalCattle
+    return apiClient.patch('/api/farms/me/', payload)
+  },
+}
 
 export default farmService

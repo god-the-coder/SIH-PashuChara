@@ -50,6 +50,20 @@ class FarmServiceTests(TestCase):
         self.assertEqual(farm.farm_name, 'Original')
         self.assertEqual(farm.location, 'Updated Location')
 
+    def test_create_farm_defaults_total_cattle_to_zero(self):
+        farm = create_farm(owner=self.owner, farm_name='Zero Cattle', location='Latur')
+        self.assertEqual(farm.total_cattle, 0)
+
+    def test_create_farm_with_total_cattle(self):
+        farm = create_farm(owner=self.owner, farm_name='Herd Farm', location='Latur', total_cattle=24)
+        self.assertEqual(farm.total_cattle, 24)
+
+    def test_update_farm_total_cattle(self):
+        farm = create_farm(owner=self.owner, farm_name='Original', location='Latur')
+        update_farm(farm=farm, total_cattle=10)
+        farm.refresh_from_db()
+        self.assertEqual(farm.total_cattle, 10)
+
 
 class IsFarmOwnerPermissionTests(TestCase):
     def setUp(self):
@@ -90,17 +104,21 @@ class FarmApiTests(TestCase):
     def test_create_get_and_patch_flow(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.post('/api/farms/me/', {'farm_name': 'API Farm', 'location': 'Nanded'}, format='json')
+        response = self.client.post(
+            '/api/farms/me/', {'farm_name': 'API Farm', 'location': 'Nanded', 'total_cattle': 12}, format='json',
+        )
         self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['total_cattle'], 12)
 
         response = self.client.get('/api/farms/me/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['farm_name'], 'API Farm')
 
-        response = self.client.patch('/api/farms/me/', {'location': 'Jalna'}, format='json')
+        response = self.client.patch('/api/farms/me/', {'location': 'Jalna', 'total_cattle': 18}, format='json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['location'], 'Jalna')
         self.assertEqual(response.data['farm_name'], 'API Farm')
+        self.assertEqual(response.data['total_cattle'], 18)
 
     def test_create_rejects_second_farm(self):
         self.client.force_authenticate(user=self.user)

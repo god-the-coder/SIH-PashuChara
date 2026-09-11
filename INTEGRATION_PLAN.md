@@ -28,39 +28,41 @@ Nothing that writes data will work from the browser until this is fixed: `CsrfVi
 - [x] 2.5 `ProtectedRoute`: **adjusted from the original plan** — the app already has an intentional guest-browsing affordance (SplashPage/LoginPage's "continue as guest", `isLoggedIn`-aware nav everywhere) that a hard per-route redirect would have broken. Implemented instead as a render-gate in `RootLayout` that holds child routes until the initial `me()` check resolves (avoids a flash of guest UI before a real session loads); actual authorization stays enforced by the backend, and feature phases wiring real API calls should prompt login on a 401 rather than the router blocking wholesale.
 - [x] 2.6 Verify: scripted session-flow proof against the live dev server — anonymous `me()` → 403, `register()` → 201, `login()` → 200 with real `full_name`/`phone_number`, a fresh `me()` call (page-refresh equivalent) still returns the same user, `logout()` → 204, `me()` after logout → 403 again. All 6 steps passed. `npm run lint`/`npm run build` both clean (zero new errors vs. the pre-existing 19 baseline lint errors elsewhere in the pulled frontend). A live-browser click-through wasn't available in this session (Browser tool unavailable) — worth a manual smoke test from an actual page.
 
-## Phase 3 — Farm service integration
+## Phase 3 — Farm service integration ✅
 
 Smallest real surface — good first end-to-end proof once auth works.
 
-- [ ] 3.1 **Decision**: cattle/herd fields (`totalCattle`, `milkingCows`, `dailyFodderRequirementKg`) shown on `FarmPage` have no backend model (`Farm` is just `farm_name` + `location`). Decide: add a backend field/model for herd data, or drop those UI fields for now.
-- [ ] 3.2 `farmService`: `getMyFarm()`, `createFarm()`, `updateFarm()` wired to `/api/farms/me/`
-- [ ] 3.3 Rework `FarmPage` to read/write real farm data (and whatever 3.1 decided for herd fields)
-- [ ] 3.4 Verify: create farm → edit → reload → persisted values shown
+- [x] 3.1 **Decision**: add `total_cattle` to the backend `Farm` model (migration `farms.0002_farm_total_cattle`); `milkingCows`/`dailyFodderRequirementKg` stay UI-derived (75%/20kg-per-head) from that one real number rather than becoming separate backend fields
+- [x] 3.2 `farmService`: `getMyFarm()` (maps a 404 to `null` — no farm yet is a normal state), `createFarm()`, `updateFarm()` wired to `/api/farms/me/` ([services/farm/farmService.js](frontend/src/services/farm/farmService.js))
+- [x] 3.3 `FarmPage` rebuilt off real data — loads the farm on mount, shows a create form when none exists yet, edit form otherwise; herd stats now derive from the real `total_cattle` instead of `DashboardContext`'s local mock state
+- [x] 3.4 Verify: scripted flow against the live dev server — `getMyFarm()` → 404/null before creation, `createFarm()` → 201 with `total_cattle` persisted, `getMyFarm()` after creation returns it, `updateFarm()` partial patch preserves other fields. All 4 steps passed. Backend: 15/15 farms tests, full suite unaffected. Frontend: lint/build clean (same 19 pre-existing baseline errors, zero new).
 
-## Phase 4 — Inspection creation + image capture
+## Phase 4 — Inspection creation + image capture ✅
 
-- [ ] 4.1 Add a "basic info" step (inspection_type, material_type(+other), storage_duration_days) — `NewInspectionPage` currently has no screen collecting these before jumping into the camera flow
-- [ ] 4.2 `inspectionService`: `create()`, `uploadImage()` wired to `POST /api/inspections/`, `POST /api/inspections/{id}/images/`
-- [ ] 4.3 Wire the existing 4-step camera flow (front/side/macro/storage) to real `image_type` values and actual `uploadImage()` calls instead of `sessionStorage` data URLs
-- [ ] 4.4 Add a delete/retake call to `DELETE /api/inspections/{id}/images/{image_id}/` on the existing "🔄 दोबारा" retake button
-- [ ] 4.5 Verify: create inspection → upload 4 real images → confirm rows exist via Django admin or `GET /api/inspections/{id}/`
+- [x] 4.1 Added a "basic info" step to `NewInspectionPage` (inspection_type, material_type + material_type_other, storage_duration_days) shown before the camera flow — creates the DRAFT inspection immediately on submit
+- [x] 4.2 `inspectionService`: `create()`, `uploadImage()`, `deleteImage()` wired to `POST /api/inspections/`, `POST /api/inspections/{id}/images/`, `DELETE /api/inspections/{id}/images/{image_id}/` ([services/inspection/inspectionService.js](frontend/src/services/inspection/inspectionService.js))
+- [x] 4.3 The 4-step camera flow (front/side/macro/storage) now uploads for real on every capture (both the simulated canvas capture and the gallery file picker convert to a `File`/`Blob` and call `uploadImage`), tagged with the matching `image_type` per step
+- [x] 4.4 Retake button now calls `deleteImage()` against the real uploaded image id before clearing the local preview
+- [x] 4.5 Verify: scripted flow against the live dev server — create → 201 DRAFT, all 4 images uploaded with correct `image_type` per step, retake-delete → 204, image count drops to 3, re-upload → back to 4. All steps passed. Lint/build clean (same 19 pre-existing baseline errors, zero new).
 
-## Phase 5 — Dynamic AI questionnaire
+## Phase 5 — Dynamic AI questionnaire ✅
 
 Replaces `InspectionQuestionnairePage`'s fixed 5-question form — the backend generates its own questions from what Gemini sees in the photos.
 
-- [ ] 5.1 `inspectionService`: `generateQuestions()`, `submitAnswers()`, `updateContext()` wired to `/questions/`, `/questions/answer/`, `/context/`
-- [ ] 5.2 Rebuild `InspectionQuestionnairePage` to render whatever questions `followup_qa` returns (dynamic count/content), rather than the hardcoded form
-- [ ] 5.3 Add farmer-optional context fields (storage_condition, moisture_exposure, farmer_observation, GPS-based weather) somewhere in this flow — currently no UI collects these at all
-- [ ] 5.4 Verify: real Gemini call returns questions tailored to an uploaded set of images, answers submit successfully
+- [x] 5.1 `inspectionService`: `generateQuestions()`, `submitAnswers()`, `updateContext()` wired to `/questions/`, `/questions/answer/`, `/context/`
+- [x] 5.2 `InspectionQuestionnairePage` rebuilt to render whatever questions `followup_qa` returns (dynamic count/content) — reads the real `inspectionId` from `sessionStorage` (set by `NewInspectionPage` in Phase 4), calls the AI endpoint on load, renders one textarea per returned question
+- [x] 5.3 Added an "optional context" section: storage condition (GOOD/FAIR/POOR), moisture exposure yes/no, a free-text observation field, and a "use my location" button (`navigator.geolocation`) that feeds real GPS coordinates into `updateContext()` so the backend fetches real weather
+- [x] 5.4 Verify: live end-to-end against the real dev server with real API keys — a real Gemini call returned 3 genuinely tailored follow-up questions from the uploaded images (not canned), answers submitted and persisted, and `updateContext` with real coordinates returned real fetched temperature/humidity from OpenWeatherMap. Lint went from 19 → 18 pre-existing baseline errors (fixed one in passing), zero new. Build clean.
 
-## Phase 6 — Analyze + Results
+## Phase 6 — Analyze + Results (split: Analyze done, Results deferred)
 
-- [ ] 6.1 Add an explicit "Analyze" trigger — no current screen calls `POST /api/inspections/{id}/analyze/`
-- [ ] 6.2 `inspectionService`/new `resultService`: wire `analyze()` and `GET /api/results/{inspection_id}/`
-- [ ] 6.3 Rebuild `ResultsPage` off the real `Result` shape (`risk_category`, `risk_score`, `headline`, `action_label`, `summary`, `confidence`, `findings`, `requires_lab_testing`, `recommendations[]`, `comparison`) — currently 100% mock data, ignores even the `sessionStorage` data it already has
-- [ ] 6.4 Surface `comparison` (the re-inspection advisory) in the UI when present
-- [ ] 6.5 Verify: full real pipeline — create → images → questions → answers → analyze → results page renders live Gemini output
+**Deferred on request**: `ResultsPage`/report UI is still being actively designed by the frontend team — 6.3/6.4 (rebuilding that page) are intentionally on hold until it's ready to receive real data, so as not to integrate against a moving target.
+
+- [x] 6.1 Explicit "Analyze" trigger added — at the end of `InspectionQuestionnairePage`'s flow (after answers/context are submitted), a button calls the real endpoint
+- [x] 6.2 `inspectionService.analyze()` wired to `POST /api/inspections/{id}/analyze/`
+- [ ] 6.3 Rebuild `ResultsPage` off the real `Result` shape (`risk_category`, `risk_score`, `headline`, `action_label`, `summary`, `confidence`, `findings`, `requires_lab_testing`, `recommendations[]`, `comparison`) — **on hold**, page not ready
+- [ ] 6.4 Surface `comparison` (the re-inspection advisory) in the UI when present — **on hold**, depends on 6.3
+- [x] 6.5 Verify (Analyze only): live end-to-end against the real dev server with a real Gemini call — `analyze()` returns a full `Result` (risk category/score/headline/action/summary/recommendations), and correctly flagged plain-color test images as atypical rather than returning canned output. Duplicate-analyze correctly rejected (400), matching the backend's one-result-per-inspection rule. Until 6.3 lands, `InspectionQuestionnairePage` renders a plain temporary raw-data view of the result after analyzing — explicitly not the final report, just proof the pipeline is fully wired for whenever the real report page is ready to plug in. Lint/build clean, 18 pre-existing baseline errors, zero new.
 
 ## Phase 7 — Save flow
 

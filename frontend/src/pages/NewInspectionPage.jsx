@@ -1,7 +1,18 @@
 import { useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
+import inspectionService from "../services/inspection/inspectionService";
 import SubPageHeader from "../components/layout/SubPageHeader";
+
+const IMAGE_TYPES = ["FRONT_GENERAL", "SIDE_DEPTH", "MACRO", "STORAGE"];
+
+const MATERIAL_TYPES = [
+  { value: "GREEN_FODDER", label: "हरा चारा (Green Fodder)" },
+  { value: "DRY_FODDER", label: "सूखा भूसा (Dry Fodder)" },
+  { value: "SILAGE", label: "साइलेज (Silage)" },
+  { value: "CONCENTRATE_FEED", label: "दाना मिश्रण (Concentrate Feed)" },
+  { value: "OTHER", label: "अन्य (Other)" },
+];
 
 export default function NewInspectionPage() {
   const navigate = useNavigate();
@@ -9,8 +20,19 @@ export default function NewInspectionPage() {
   const fodderType = searchParams.get("type") || "silage";
   const { t, showToast } = useDashboard();
 
+  const [inspectionId, setInspectionId] = useState(null);
+  const [basicInfo, setBasicInfo] = useState({
+    inspectionType: fodderType === "feed" ? "FEED" : "SILAGE",
+    materialType: fodderType === "feed" ? "CONCENTRATE_FEED" : "SILAGE",
+    materialTypeOther: "",
+    storageDurationDays: "1",
+  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
   const [currentStep, setCurrentStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([null, null, null, null]);
+  const [uploadingStep, setUploadingStep] = useState(null);
   const [isVoiceActive, setIsVoiceActive] = useState(true);
   const fileInputRef = useRef(null);
 
@@ -56,6 +78,48 @@ export default function NewInspectionPage() {
     "अब जहाँ चारा रखा है, उस शेड या फर्श का परिवेश दिखाएँ।",
   ];
 
+  const handleCreateInspection = async (e) => {
+    e.preventDefault();
+    setCreateError("");
+
+    if (basicInfo.materialType === "OTHER" && !basicInfo.materialTypeOther.trim()) {
+      setCreateError("कृपया चारे का प्रकार बताएं");
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const inspection = await inspectionService.create({
+        inspectionType: basicInfo.inspectionType,
+        materialType: basicInfo.materialType,
+        materialTypeOther: basicInfo.materialTypeOther,
+        storageDurationDays: Number(basicInfo.storageDurationDays) || 0,
+      });
+      setInspectionId(inspection.id);
+      sessionStorage.setItem("pashuchaara_inspection_id", String(inspection.id));
+    } catch (apiError) {
+      setCreateError(apiError.message || "जाँच शुरू नहीं हो सकी। कृपया पुनः प्रयास करें।");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const uploadStepImage = async (file) => {
+    setUploadingStep(currentStep);
+    try {
+      const image = await inspectionService.uploadImage(inspectionId, file, IMAGE_TYPES[currentStep]);
+      const updated = [...capturedImages];
+      updated[currentStep] = { id: image.id, previewUrl: URL.createObjectURL(file) };
+      setCapturedImages(updated);
+      showToast(`तस्वीर ${currentStep + 1} सुरक्षित हो गई! ✓`);
+      if (currentStep < 3) setCurrentStep((s) => s + 1);
+    } catch (apiError) {
+      showToast(apiError.message || "तस्वीर अपलोड नहीं हो सकी। पुनः प्रयास करें।");
+    } finally {
+      setUploadingStep(null);
+    }
+  };
+
   const handleCaptureSimulated = () => {
     const canvas = document.createElement("canvas");
     canvas.width = 400;
@@ -68,45 +132,134 @@ export default function NewInspectionPage() {
     ctx.textAlign = "center";
     ctx.fillText(`${steps[currentStep].title}`, 200, 150);
 
-    const dataUrl = canvas.toDataURL("image/jpeg");
-    saveStepImage(dataUrl);
+    canvas.toBlob((blob) => {
+      const file = new File([blob], `${steps[currentStep].id}.jpg`, { type: "image/jpeg" });
+      uploadStepImage(file);
+    }, "image/jpeg");
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        saveStepImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (file) uploadStepImage(file);
   };
 
-  const saveStepImage = (dataUrl) => {
-    const updated = [...capturedImages];
-    updated[currentStep] = dataUrl;
-    setCapturedImages(updated);
-    showToast(`तस्वीर ${currentStep + 1} सुरक्षित हो गई! ✓`);
+  const handleRetake = async () => {
+    const existing = capturedImages[currentStep];
+    if (!existing) return;
 
-    if (currentStep < 3) {
-      setCurrentStep((s) => s + 1);
+    try {
+      await inspectionService.deleteImage(inspectionId, existing.id);
+      URL.revokeObjectURL(existing.previewUrl);
+      const updated = [...capturedImages];
+      updated[currentStep] = null;
+      setCapturedImages(updated);
+      showToast("तस्वीर हटाई गई");
+    } catch (apiError) {
+      showToast(apiError.message || "तस्वीर हटाई नहीं जा सकी।");
     }
   };
 
   const handleProceedToQuestions = () => {
-    sessionStorage.setItem("pashuchaara_temp_images", JSON.stringify(capturedImages));
-    sessionStorage.setItem("pashuchaara_temp_type", fodderType);
     navigate("/inspect/questions");
   };
 
   const allCaptured = capturedImages.every((img) => img !== null);
   const step = steps[currentStep];
 
+  if (!inspectionId) {
+    return (
+      <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#121512] antialiased">
+        <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between p-4 shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
+          <SubPageHeader
+            title="जाँच की मूल जानकारी"
+            subtitle="चरण 1 / 2"
+            backTo="/dashboard"
+          />
+
+          <form onSubmit={handleCreateInspection} className="my-3 space-y-3 flex-1">
+            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
+              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
+                जाँच का प्रकार
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "SILAGE", label: "साइलेज" },
+                  { value: "FEED", label: "पशु आहार" },
+                ].map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => setBasicInfo({ ...basicInfo, inspectionType: opt.value })}
+                    className={`py-2 px-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                      basicInfo.inspectionType === opt.value
+                        ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
+                        : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
+              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
+                चारे की सामग्री
+              </label>
+              <select
+                value={basicInfo.materialType}
+                onChange={(e) => setBasicInfo({ ...basicInfo, materialType: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+              >
+                {MATERIAL_TYPES.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              {basicInfo.materialType === "OTHER" && (
+                <input
+                  type="text"
+                  placeholder="चारे का प्रकार लिखें"
+                  value={basicInfo.materialTypeOther}
+                  onChange={(e) => setBasicInfo({ ...basicInfo, materialTypeOther: e.target.value })}
+                  className="w-full mt-2 px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+                />
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
+              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
+                कितने दिनों से भंडारित है?
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={basicInfo.storageDurationDays}
+                onChange={(e) => setBasicInfo({ ...basicInfo, storageDurationDays: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
+              />
+            </div>
+
+            {createError && (
+              <p className="text-xs font-bold text-red-600 dark:text-red-400">{createError}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] disabled:opacity-60"
+            >
+              <span>{isCreating ? "शुरू हो रहा है..." : "फोटो चरण पर जाएँ"}</span>
+              <span className="text-sm">→</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#121512] antialiased">
       <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between p-4 shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
-        {/* SubPageHeader with language switcher */}
         <SubPageHeader
           title={fodderType === "silage" ? (t.inspectSilageTitle || "साइलेज दृश्य जाँच") : (t.inspectFeedTitle || "पशु आहार दृश्य जाँच")}
           subtitle={`${t.stepPrefix || "चरण"} ${currentStep + 1} / 4`}
@@ -125,7 +278,6 @@ export default function NewInspectionPage() {
           }
         />
 
-        {/* Step Indicator Badges - Clean Sandish / Off-white Cards */}
         <div className="grid grid-cols-4 gap-1.5 my-2.5">
           {steps.map((s, idx) => (
             <button
@@ -145,7 +297,6 @@ export default function NewInspectionPage() {
           ))}
         </div>
 
-        {/* Live Audio / AI Guidance Pill - Muted Sandy Card */}
         {isVoiceActive && (
           <div className="p-3.5 rounded-2xl bg-white dark:bg-[#192119] border border-[#ded5c4] dark:border-[#2b382b] flex items-start gap-2.5 shadow-xs">
             <span className="text-lg">🤖</span>
@@ -160,9 +311,7 @@ export default function NewInspectionPage() {
           </div>
         )}
 
-        {/* Camera Viewfinder Screen - Neutral Sand & Slate Frame */}
         <div className="relative my-2.5 flex-1 rounded-3xl overflow-hidden bg-stone-900 border-2 border-[#d5cbba] dark:border-[#354035] shadow-xl flex flex-col justify-between p-4 min-h-[290px]">
-          {/* Active step guide banner */}
           <div className="relative z-10 p-3 rounded-2xl bg-black/65 backdrop-blur-md border border-white/20 text-left text-white">
             <div className="flex items-center justify-between">
               <span className="text-sm font-black">{step.title}</span>
@@ -172,11 +321,14 @@ export default function NewInspectionPage() {
             <p className="text-[11px] text-emerald-300 mt-1 font-semibold">💡 {step.hint}</p>
           </div>
 
-          {/* Captured Preview or Viewfinder Crosshairs */}
-          {capturedImages[currentStep] ? (
+          {uploadingStep === currentStep ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+              <span className="text-white text-xs font-bold">अपलोड हो रहा है...</span>
+            </div>
+          ) : capturedImages[currentStep] ? (
             <div className="absolute inset-0 z-0">
               <img
-                src={capturedImages[currentStep]}
+                src={capturedImages[currentStep].previewUrl}
                 alt="Captured sample"
                 className="w-full h-full object-cover"
               />
@@ -192,7 +344,6 @@ export default function NewInspectionPage() {
             </div>
           )}
 
-          {/* Hidden File Input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -202,22 +353,22 @@ export default function NewInspectionPage() {
           />
         </div>
 
-        {/* Bottom Shutter & Controls - Warm Sandish Neutral Bar */}
         <div className="pt-1 pb-2 space-y-3">
           <div className="flex items-center justify-around gap-4">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-2xl bg-white dark:bg-[#1b221b] hover:bg-gray-50 border border-[#ded5c4] dark:border-[#2b382b] text-xs font-bold text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 cursor-pointer shadow-xs"
+              disabled={uploadingStep !== null}
+              className="px-4 py-2 rounded-2xl bg-white dark:bg-[#1b221b] hover:bg-gray-50 border border-[#ded5c4] dark:border-[#2b382b] text-xs font-bold text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 cursor-pointer shadow-xs disabled:opacity-60"
             >
               <span className="text-base">📁</span>
               <span className="text-[10px]">{t.fromGalleryBtn || "गैलरी से"}</span>
             </button>
 
-            {/* Shutter Button */}
             <button
               id="shutterBtn"
               onClick={handleCaptureSimulated}
-              className="w-16 h-16 rounded-full bg-white dark:bg-[#202720] p-1.5 shadow-xl border-4 border-[#2D5A3D] dark:border-emerald-500 flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+              disabled={uploadingStep !== null}
+              className="w-16 h-16 rounded-full bg-white dark:bg-[#202720] p-1.5 shadow-xl border-4 border-[#2D5A3D] dark:border-emerald-500 flex items-center justify-center transition-transform active:scale-90 cursor-pointer disabled:opacity-60"
             >
               <div className="w-full h-full rounded-full bg-[#2D5A3D] text-white flex items-center justify-center text-xl font-black">
                 📷
@@ -225,20 +376,15 @@ export default function NewInspectionPage() {
             </button>
 
             <button
-              onClick={() => {
-                const updated = [...capturedImages];
-                updated[currentStep] = null;
-                setCapturedImages(updated);
-                showToast("तस्वीर हटाई गई");
-              }}
-              className="px-4 py-2 rounded-2xl bg-white dark:bg-[#1b221b] hover:bg-gray-50 border border-[#ded5c4] dark:border-[#2b382b] text-xs font-bold text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 cursor-pointer shadow-xs"
+              onClick={handleRetake}
+              disabled={uploadingStep !== null || !capturedImages[currentStep]}
+              className="px-4 py-2 rounded-2xl bg-white dark:bg-[#1b221b] hover:bg-gray-50 border border-[#ded5c4] dark:border-[#2b382b] text-xs font-bold text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 cursor-pointer shadow-xs disabled:opacity-60"
             >
               <span className="text-base">🔄</span>
               <span className="text-[10px]">{t.retakeBtn || "दोबारा"}</span>
             </button>
           </div>
 
-          {/* Next Button */}
           <button
             onClick={handleProceedToQuestions}
             disabled={!capturedImages[0]}
