@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
-import { GlobeIcon, CheckIcon } from "../components/common/Icons";
+import { GlobeIcon, CheckIcon, SpeakerIcon } from "../components/common/Icons";
+import { useTTS } from "../hooks/useTTS";
 
 // Language metadata for bottom sheet
 const LANG_META = [
@@ -12,75 +13,137 @@ const LANG_META = [
   { code: "kn", native: "ಕನ್ನಡ", latin: "Kannada" },
 ];
 
-// Per-step config
+// Helper to resolve localized text with fallbacks
+const getLocalized = (obj, lang) => {
+  if (!obj) return "";
+  if (typeof obj === "string") return obj;
+  return obj[lang] || obj["hi"] || obj["en"] || Object.values(obj)[0] || "";
+};
+
+// Per-step config with multilingual strings
 const STEPS = [
   {
     id: "step1",
-    badgeHi: "पहला कदम • 01 / 03",
-    badgeEn: "Step 1 • 01 / 03",
-    headlineHi: "कैमरा चारे की ओर करें",
-    headlineEn: "Point camera at fodder",
-    subtextHi: "सामने, साइड, नज़दीक और भंडारण परिवेश की 4 तस्वीरें लें।",
-    subtextEn: "Take 4 photos: front, side, close-up, and storage area.",
+    badge: {
+      hi: "पहला कदम • 01 / 03",
+      en: "Step 1 • 01 / 03",
+      mr: "पहिले पाऊल • 01 / 03",
+      ta: "படி 1 • 01 / 03",
+    },
+    headline: {
+      hi: "कैमरा चारे की ओर करें",
+      en: "Point camera at fodder",
+      mr: "कॅमेरा चाऱ्याकडे करा",
+      ta: "கேமராவை தீவனத்தை நோக்கி வையுங்கள்",
+    },
+    subtext: {
+      hi: "सामने, साइड, नज़दीक और भंडारण परिवेश की 4 तस्वीरें लें।",
+      en: "Take 4 photos: front, side, close-up, and storage area.",
+      mr: "समोरून, बाजूने, जवळून आणि साठवण जागेचे ४ फोटो घ्या.",
+      ta: "முன், பக்கம், மிக அருகில் மற்றும் சேமிப்பு பகுதியின் 4 புகைப்படங்களை எடுக்கவும்.",
+    },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuAckvpFSK0Ofw9eqk5xWYz9USRgImMnn9qSueRtdg80DASUc1uj_akKBJ5o5XXnqu0HBu1cZ5CReuJIXdGtc7SugfLVSBiZISFkFj_F4FgvfRS_zEt6yH9QZNQXTfGO7R5yDZfEc4jyLUz4N_DnRgXPrK6u-kk4eI7J2KiHcM_UCFnGAZ0O_bU9apfYph5ZCfrSAUMGSZWos6l6OHHnbrjx2XBHpx3z0xY1oxKuQvTu1VfUpbSz-60q3iAezaS2JZD5Ma0",
     imageAlt: "गाय के चारे की मोबाइल द्वारा जाँच",
     voiceBadge: null,
-    ctaHi: "अगला कदम",
-    ctaEn: "Next Step",
+    cta: {
+      hi: "अगला कदम",
+      en: "Next Step",
+      mr: "पुढील पाऊल",
+      ta: "அடுத்த படி",
+    },
   },
   {
     id: "step2",
-    badgeHi: "दूसरा कदम • 02 / 03",
-    badgeEn: "Step 2 • 02 / 03",
-    headlineHi: "आवाज़ के निर्देश सुनें",
-    headlineEn: "Listen to voice instructions",
-    subtextHi:
-      "लाइव वॉइस असिस्टेंट आपको हिंदी में बताएगा कि कब और कैसे फोटो लेनी है।",
-    subtextEn:
-      "Live voice assistant will guide you in your language on when and how to take photos.",
+    badge: {
+      hi: "दूसरा कदम • 02 / 03",
+      en: "Step 2 • 02 / 03",
+      mr: "दुसरे पाऊल • 02 / 03",
+      ta: "படி 2 • 02 / 03",
+    },
+    headline: {
+      hi: "आवाज़ के निर्देश सुनें",
+      en: "Listen to voice instructions",
+      mr: "आवाजाचे निर्देश ऐका",
+      ta: "குரல் வழிமுறைகளைக் கேளுங்கள்",
+    },
+    subtext: {
+      hi: "लाइव वॉइस असिस्टेंट आपको अपनी भाषा में बताएगा कि कब और कैसे फोटो लेनी है।",
+      en: "Live voice assistant will guide you in your language on when and how to take photos.",
+      mr: "लाईव्ह व्हॉईस असिस्टंट तुम्हाला फोटो कधी आणि कसा काढायचा हे सांगेल.",
+      ta: "புகைப்படம் எப்போது, எப்படி எடுப்பது என்பதை நேரடி குரல் உதவியாளர் உங்களுக்கு வழிகாட்டும்.",
+    },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuD83nEMe5VGBHCss_QohfU-ZipBU2EUtuzQaW1VDL3m9Ov2js1Uu6FkeislLbWEyZRTf5ENT7P92Y_NcnPzwdxcrkSPKhDGJ3bNxvIah9DHQdynyV495i0vhEiyCom2mXTD3lxrYmQ5pE2Jlrr3aK3KSjTWpjIgP-hSzaFXfCVkKyjQJELCmfTY70-TZbY0WdpkC5_SiTQ756UjNvalnibuqg0vIXbB8Uh1wrCk-bU2fxC2o2WRsEORD3uAWARH44fFsSM",
     imageAlt:
       "भारतीय डेयरी किसान पशुचारा ऐप पर लाइव वॉइस असिस्टेंट के साथ चारे की तस्वीर लेते हुए",
-    voiceBadge: { hi: "वॉइस एक्टिव", en: "Voice Active" },
-    ctaHi: "अगला कदम",
-    ctaEn: "Next Step",
+    voiceBadge: {
+      hi: "वॉइस एक्टिव",
+      en: "Voice Active",
+      mr: "व्हॉईस सक्रिय",
+      ta: "குரல் செயலில்",
+    },
+    cta: {
+      hi: "अगला कदम",
+      en: "Next Step",
+      mr: "पुढील पाऊल",
+      ta: "அடுத்த படி",
+    },
   },
   {
     id: "step3",
-    badgeHi: "तीसरा कदम • 03 / 03",
-    badgeEn: "Step 3 • 03 / 03",
-    headlineHi: "सटीक परिणाम और सलाह पाएँ",
-    headlineEn: "Get accurate results & advice",
-    subtextHi:
-      "चारे की गुणवत्ता और जोखिम की स्थिति समझें, और तुरंत क्या सावधानी बरतें।",
-    subtextEn:
-      "Understand fodder quality and risk status, and know what precaution to take immediately.",
+    badge: {
+      hi: "तीसरा कदम • 03 / 03",
+      en: "Step 3 • 03 / 03",
+      mr: "तिसरे पाऊल • 03 / 03",
+      ta: "படி 3 • 03 / 03",
+    },
+    headline: {
+      hi: "सटीक परिणाम और सलाह पाएँ",
+      en: "Get accurate results & advice",
+      mr: "अचूक निकाल आणि सल्ला मिळवा",
+      ta: "துல்லியமான முடிவுகள் & ஆலோசனை",
+    },
+    subtext: {
+      hi: "चारे की गुणवत्ता और जोखिम की स्थिति समझें, और तुरंत क्या सावधानी बरतें।",
+      en: "Understand fodder quality and risk status, and know what precaution to take immediately.",
+      mr: "चाऱ्याची गुणवत्ता व धोका समजून घ्या आणि योग्य खबरदारी घ्या.",
+      ta: "தீவனத்தின் தரம் மற்றும் அபாய நிலையைப் புரிந்து கொண்டு உடனடி முன்னெச்சரிக்கை எடுக்கவும்.",
+    },
     image:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuBhBgCj7r_HjkCHFcu9E8ZMmP91YnprgdRUt6QHqf_516pmdSR6cIYpzoEqvrdPvZqWo2LvUbbcTpoc0Z8719cdMGjXnD2z0RpM8GIpo1DHHut9qKMeQFJYmxqVB8E-9hQgIlvXaCAfhWEkX4Naz9PQaDK-gtL9BZfB7yQx4SiDyHPlQUQVImWoEWqPcxyKAppVSMXcq_B3kA4sj6ZpMvhXB3TG2BNHLhhT8XpGOhs0Ol06_na1y93onw",
     imageAlt: "संतुष्ट किसान चारे की गुणवत्ता जांचने के बाद",
     voiceBadge: null,
     trustBadge: true,
-    ctaHi: "शुरू करें",
-    ctaEn: "Get Started",
+    cta: {
+      hi: "शुरू करें",
+      en: "Get Started",
+      mr: "सुरू करा",
+      ta: "தொடங்குங்கள்",
+    },
   },
 ];
 
 function OnboardingContent() {
   const navigate = useNavigate();
   const { lang, changeLang, t } = useDashboard();
+  const { speak, stop, toggleSpeak, isSpeaking, isVoiceOn } = useTTS();
   const [step, setStep] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [imgError, setImgError] = useState({});
 
   const isHi = lang === "hi";
   const current = STEPS[step];
+  const badge = getLocalized(current.badge, lang);
+  const headline = getLocalized(current.headline, lang);
+  const subtext = getLocalized(current.subtext, lang);
+  const ctaLabel = getLocalized(current.cta, lang);
 
   const currentLangNative =
     LANG_META.find((l) => l.code === lang)?.native || "हिन्दी";
 
   const handleNext = () => {
+    stop();
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {
@@ -89,6 +152,7 @@ function OnboardingContent() {
   };
 
   const handleBack = () => {
+    stop();
     if (step > 0) {
       setStep((s) => s - 1);
     } else {
@@ -97,19 +161,34 @@ function OnboardingContent() {
   };
 
   const handleFinish = () => {
+    stop();
     localStorage.setItem("pashuchaara_welcome_done", "true");
     navigate("/dashboard");
   };
 
   const selectLang = (code) => {
+    stop();
     changeLang(code);
     setSheetOpen(false);
   };
 
-  const badge = isHi ? current.badgeHi : current.badgeEn;
-  const headline = isHi ? current.headlineHi : current.headlineEn;
-  const subtext = isHi ? current.subtextHi : current.subtextEn;
-  const ctaLabel = isHi ? current.ctaHi : current.ctaEn;
+  // Auto-speak on first time or step change
+  useEffect(() => {
+    const isFirstTime = !localStorage.getItem("pashuchaara_welcome_done");
+    if (isFirstTime || isVoiceOn) {
+      const speechText = `${headline}. ${subtext}`;
+      const timer = setTimeout(() => {
+        speak(speechText, lang);
+      }, 350);
+      return () => {
+        clearTimeout(timer);
+        stop();
+      };
+    }
+    return () => {
+      stop();
+    };
+  }, [step, lang, headline, subtext, speak, stop, isVoiceOn]);
 
   return (
     <div
@@ -176,11 +255,29 @@ function OnboardingContent() {
             </div>
           </nav>
 
-          {/* Step badge */}
-          <div className="flex justify-center mt-3">
+          {/* Step badge & Voice Listen Button */}
+          <div className="flex items-center justify-center gap-2 mt-3">
             <span className="inline-flex items-center px-3.5 py-1 rounded-full text-xs font-bold tracking-tight bg-white border border-stone-200/90 text-emerald-700 shadow-sm">
               {badge}
             </span>
+            <button
+              type="button"
+              id="onboarding-tts-btn"
+              onClick={() => toggleSpeak(`${headline}. ${subtext}`, lang)}
+              aria-label="बोलकर समझाएं"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm transition-all active:scale-95 cursor-pointer ${
+                isSpeaking
+                  ? "bg-emerald-700 text-white border-emerald-700 animate-pulse ring-2 ring-emerald-400"
+                  : "bg-white text-emerald-800 border-stone-200/90 hover:bg-stone-50"
+              }`}
+            >
+              <SpeakerIcon className={`w-3.5 h-3.5 ${isSpeaking ? "text-white" : "text-emerald-700"}`} />
+              <span>
+                {isSpeaking
+                  ? (lang === "en" ? "Playing..." : lang === "mr" ? "बोलत आहे..." : lang === "ta" ? "பேசுகிறது..." : "बोल रहे हैं...")
+                  : (lang === "en" ? "Listen" : lang === "mr" ? "ऐका" : lang === "ta" ? "கேளுங்கள்" : "सुनें")}
+              </span>
+            </button>
           </div>
 
           {/* Headline */}
@@ -225,7 +322,7 @@ function OnboardingContent() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
                 </span>
                 <span className="text-[11px] font-semibold text-emerald-800">
-                  {isHi ? current.voiceBadge.hi : current.voiceBadge.en}
+                  {getLocalized(current.voiceBadge, lang)}
                 </span>
               </div>
             )}
@@ -238,10 +335,26 @@ function OnboardingContent() {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold text-stone-900 leading-tight">
-                    {isHi ? "गुणवत्ता व स्वास्थ्य आश्वासन" : "Quality & Health Assurance"}
+                    {getLocalized(
+                      {
+                        hi: "गुणवत्ता व स्वास्थ्य आश्वासन",
+                        en: "Quality & Health Assurance",
+                        mr: "गुणवत्ता आणि आरोग्य हमी",
+                        ta: "தரம் மற்றும் சுகாதார உத்தரவாதம்",
+                      },
+                      lang
+                    )}
                   </p>
                   <p className="text-[10px] text-stone-500">
-                    {isHi ? "AI जाँच प्रमाणित" : "AI verified inspection"}
+                    {getLocalized(
+                      {
+                        hi: "AI जाँच प्रमाणित",
+                        en: "AI verified inspection",
+                        mr: "AI तपासणी प्रमाणित",
+                        ta: "AI சரிபார்க்கப்பட்ட ஆய்வு",
+                      },
+                      lang
+                    )}
                   </p>
                 </div>
               </div>

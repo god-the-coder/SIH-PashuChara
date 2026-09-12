@@ -42,12 +42,27 @@ const inspectionService = {
     return apiClient.post(`/api/inspections/${inspectionId}/images/${imageId}/guidance/`, { language });
   },
 
-  generateQuestions(inspectionId) {
-    return apiClient.post(`/api/inspections/${inspectionId}/questions/`);
+  checkLiveGuidance(inspectionId, { image, stepLabel, stepDescription, language = 'en' }) {
+    return apiClient.post(`/api/inspections/${inspectionId}/live-guidance/`, {
+      image,
+      step_label: stepLabel,
+      step_description: stepDescription,
+      language,
+    });
   },
 
-  submitAnswers(inspectionId, answers) {
-    return apiClient.post(`/api/inspections/${inspectionId}/questions/answer/`, { answers });
+  generateQuestions(inspectionId, language = "hi") {
+    return apiClient.post(`/api/inspections/${inspectionId}/questions/?lang=${language}`);
+  },
+
+  getQuestions(inspectionId, language = "hi") {
+    return apiClient.get(`/api/inspections/${inspectionId}/questions/?lang=${language}`);
+  },
+
+  submitAnswers(inspectionId, answers, questions) {
+    const payload = { answers };
+    if (questions) payload.questions = questions;
+    return apiClient.post(`/api/inspections/${inspectionId}/questions/answer/`, payload);
   },
 
   updateContext(inspectionId, { latitude, longitude, storageDurationDays, storageCondition, moistureExposure, farmerObservation }) {

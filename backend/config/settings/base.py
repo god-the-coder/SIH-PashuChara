@@ -193,9 +193,14 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# Gemini AI (visual inspection analysis — vision-capable multimodal generation)
 GEMINI_KEY = os.getenv('GEMINI_KEY', '')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.8-flash')
+_raw_keys = os.getenv('GEMINI_KEYS', '')
+GEMINI_KEYS = [k.strip() for k in _raw_keys.split(',') if k.strip()] or ([GEMINI_KEY] if GEMINI_KEY else [])
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+
+# Groq AI (live camera quality, blur, lighting checks and guidance)
+GROQ_KEY = os.getenv('GROQ_KEY', '')
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-20b')
 
 # OpenWeatherMap (inspection environmental context)
 OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')

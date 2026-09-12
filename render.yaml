@@ -29,12 +29,14 @@ services:
         sync: false
       - key: GEMINI_KEY
         sync: false
+      - key: GEMINI_KEYS
+        sync: false
       - key: GEMINI_MODEL
-        value: gemini-3.8-flash
+        value: gemini-3.5-flash
       - key: GROQ_KEY
         sync: false
       - key: GROQ_MODEL
-        value: qwen/qwen3.6-27b
+        value: openai/gpt-oss-20b
       - key: OPENWEATHER_KEY
         sync: false
       - key: DB_NAME

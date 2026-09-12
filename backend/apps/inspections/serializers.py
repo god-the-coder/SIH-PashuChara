@@ -36,6 +36,15 @@ class CaptureGuidanceRequestSerializer(serializers.Serializer):
     )
 
 
+class LiveGuidanceRequestSerializer(serializers.Serializer):
+    image = serializers.CharField(required=True)  # base64 image data or data URL
+    step_label = serializers.CharField(required=False, default='General')
+    step_description = serializers.CharField(required=False, default='Feed sample')
+    language = serializers.ChoiceField(
+        choices=['hi', 'en', 'mr', 'gu', 'kn', 'ta'], required=False, default='en',
+    )
+
+
 class CreateInspectionSerializer(serializers.Serializer):
     inspection_type = serializers.ChoiceField(choices=Inspection._meta.get_field('inspection_type').choices)
     material_type = serializers.ChoiceField(choices=Inspection._meta.get_field('material_type').choices)
@@ -46,6 +55,7 @@ class CreateInspectionSerializer(serializers.Serializer):
 
 class FollowupAnswersSerializer(serializers.Serializer):
     answers = serializers.ListField(child=serializers.CharField(allow_blank=True), allow_empty=False)
+    questions = serializers.ListField(child=serializers.CharField(allow_blank=True), required=False, allow_empty=True)
 
 
 class InspectionContextSerializer(serializers.Serializer):

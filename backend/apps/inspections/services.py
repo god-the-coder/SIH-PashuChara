@@ -5,8 +5,8 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
-from ai.client import generate_capture_guidance as ai_generate_capture_guidance
 from ai.client import generate_followup_questions as ai_generate_followup_questions
+from ai.groq_guidance import generate_groq_guidance
 from apps.notifications.services import notify_weather_alert
 from imaging.exceptions import ImageProcessingError, ImageValidationError
 from imaging.processor import create_processed_copy
@@ -96,19 +96,17 @@ _CAPTURE_STEP_GUIDANCE = {
 
 def generate_capture_guidance(*, image, language='en'):
     """Live feedback on ONE just-captured photo's capture quality (framing/lighting/
-    focus) — distinct from generate_followup_questions/analyze_material, which judge
-    the material itself. Called right after each photo upload, not blocking it.
+    focus/material) powered exclusively by Groq & local CV analysis — not Gemini.
     """
     step_label, step_description = _CAPTURE_STEP_GUIDANCE.get(
         image.image_type, ('General', 'The subject is clearly visible, in focus, and well lit.'),
     )
     with image.image.open('rb') as file:
         data = file.read()
-    mime_type = mimetypes.guess_type(image.image.name)[0] or 'image/jpeg'
 
-    return ai_generate_capture_guidance(
+    return generate_groq_guidance(
         step_label=step_label, step_description=step_description,
-        image=(data, mime_type), language=language,
+        image_bytes=data, language=language,
     )
 
 
@@ -213,7 +211,7 @@ def read_inspection_images_for_analysis(*, inspection):
     return primary + supplementary, len(primary)
 
 
-def generate_followup_questions(*, inspection):
+def generate_followup_questions(*, inspection, language='en'):
     if inspection.status != InspectionStatus.DRAFT:
         raise ValidationError('Follow-up questions can only be generated for a draft inspection.')
 
@@ -235,6 +233,7 @@ def generate_followup_questions(*, inspection):
         material_type_other=inspection.material_type_other,
         storage_duration_days=inspection.storage_duration_days,
         images=images,
+        language=language,
     )
 
     inspection.followup_qa = [{'question': question, 'answer': None} for question in questions]
@@ -242,11 +241,27 @@ def generate_followup_questions(*, inspection):
     return inspection
 
 
-def submit_followup_answers(*, inspection, answers):
+def submit_followup_answers(*, inspection, answers, questions=None):
     if not inspection.followup_qa:
-        raise ValidationError('No follow-up questions were generated for this inspection.')
+        if not questions:
+            raise ValidationError('No follow-up questions were generated for this inspection.')
+        if len(questions) != len(answers):
+            raise ValidationError(f'Expected {len(questions)} answers, received {len(answers)}.')
+        inspection.followup_qa = [
+            {'question': q, 'answer': a}
+            for q, a in zip(questions, answers)
+        ]
+        inspection.save(update_fields=['followup_qa'])
+        return inspection
 
     if len(answers) != len(inspection.followup_qa):
+        if questions and len(questions) == len(answers):
+            inspection.followup_qa = [
+                {'question': q, 'answer': a}
+                for q, a in zip(questions, answers)
+            ]
+            inspection.save(update_fields=['followup_qa'])
+            return inspection
         raise ValidationError(
             f'Expected {len(inspection.followup_qa)} answers, received {len(answers)}.',
         )

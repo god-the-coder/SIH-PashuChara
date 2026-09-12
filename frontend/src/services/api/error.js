@@ -54,7 +54,13 @@ function getCategory(status, code, isNetworkError) {
 }
 
 function getBackendMessage(data) {
-  if (typeof data === 'string') return data
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (trimmed.startsWith('<') || trimmed.toLowerCase().includes('<!doctype html')) {
+      return null;
+    }
+    return data;
+  }
 
   if (Array.isArray(data)) {
     return typeof data[0] === 'string' ? data[0] : null
