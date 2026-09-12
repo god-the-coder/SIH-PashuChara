@@ -157,6 +157,13 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
+# JS can never read document.cookie for a cookie set by a different domain
+# (a hard browser boundary, not a SameSite/Secure setting) — so once the API
+# is on its own domain (e.g. Render) rather than sharing a hostname with the
+# frontend, the csrftoken cookie is invisible to frontend JS. Exposing it as a
+# response header instead lets the frontend read it via CORS and attach it
+# manually. See LoginView/MeView in apps/accounts/views.py.
+CORS_EXPOSE_HEADERS = ['X-CSRFToken']
 
 # CSRF Settings
 # The frontend runs on a different origin (Vite dev server) than the API, so

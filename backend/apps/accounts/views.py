@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema
@@ -38,7 +39,13 @@ class LoginView(APIView):
             return Response({'detail': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         login(request, user)
-        return Response(UserSerializer(user, context={'request': request}).data)
+        response = Response(UserSerializer(user, context={'request': request}).data)
+        # Frontend JS can't read the csrftoken cookie once the API is on a
+        # different domain from the frontend (browsers never expose another
+        # domain's cookies to document.cookie) — this header is the readable
+        # equivalent, exposed cross-origin via CORS_EXPOSE_HEADERS.
+        response['X-CSRFToken'] = get_token(request)
+        return response
 
 
 class LogoutView(APIView):
@@ -58,7 +65,9 @@ class MeView(APIView):
     @method_decorator(ensure_csrf_cookie)
     @extend_schema(tags=['accounts'], responses=UserSerializer)
     def get(self, request):
-        return Response(UserSerializer(request.user, context={'request': request}).data)
+        response = Response(UserSerializer(request.user, context={'request': request}).data)
+        response['X-CSRFToken'] = get_token(request)
+        return response
 
     @extend_schema(tags=['accounts'], request=UpdateUserSerializer, responses=UserSerializer)
     def patch(self, request):
