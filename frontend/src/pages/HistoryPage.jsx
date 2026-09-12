@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import { CalendarIcon, ClipboardIcon } from "../components/common/Icons";
 
 export default function HistoryPage() {
   const navigate = useNavigate();
@@ -66,23 +67,16 @@ export default function HistoryPage() {
           title={t.historyPageTitle || "जाँच इतिहास"}
           subtitle={t.historyPageSub || "पिछली सभी AI रिपोर्ट व परिणाम"}
           backTo="/dashboard"
-          actionBtn={
-            <button
-              onClick={() => navigate("/inspect/new")}
-              className="px-2.5 py-1.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-95"
-            >
-              {t.newScanShort || "+ नई जाँच"}
-            </button>
-          }
         />
 
-        {/* Filter Pills */}
-        <div className="px-4 pt-3 flex items-center gap-2">
-          {[
-            { id: "all", label: t.filterAll || "सभी" },
-            { id: "silage", label: t.filterSilage || "साइलेज" },
-            { id: "feed", label: t.filterFeed || "पशु आहार" },
-          ].map((tab) => (
+        {/* Action row + Filter Pills */}
+        <div className="px-4 pt-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {[
+              { id: "all",    label: t.filterAll    || "सभी" },
+              { id: "silage", label: t.filterSilage || "साइलेज" },
+              { id: "feed",   label: t.filterFeed   || "पशु आहार" },
+            ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
@@ -94,7 +88,15 @@ export default function HistoryPage() {
             >
               {tab.label}
             </button>
-          ))}
+            ))}
+          </div>
+          <button
+            onClick={() => navigate("/inspect/new")}
+            className="px-3 py-1.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-95 flex items-center gap-1 shrink-0"
+          >
+            <span>+</span>
+            <span>{(t.newScanShort || "नई जाँच").replace("+", "").trim()}</span>
+          </button>
         </div>
 
         {/* History List */}
@@ -116,7 +118,10 @@ export default function HistoryPage() {
                 {item.summary}
               </p>
               <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-white/5 flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-                <span>📅 {item.date} • {item.time}</span>
+                <span className="flex items-center gap-1">
+                  <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{item.date} • {item.time}</span>
+                </span>
                 <button
                   onClick={() => navigate(`/history/${item.id}/info`)}
                   className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-400 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-[#1e3828] cursor-pointer transition-colors"
@@ -129,7 +134,9 @@ export default function HistoryPage() {
 
           {filtered.length === 0 && (
             <div className="text-center py-12">
-              <span className="text-4xl">📋</span>
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2 border border-emerald-200 dark:border-emerald-800/50">
+                <ClipboardIcon className="w-7 h-7" />
+              </div>
               <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mt-2">
                 {t.noRecordsFound || "कोई रिकॉर्ड नहीं मिला"}
               </h3>

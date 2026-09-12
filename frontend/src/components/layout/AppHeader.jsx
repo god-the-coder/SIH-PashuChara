@@ -1,6 +1,7 @@
 import { useDashboard } from "../../context/DashboardContext";
 import { SUPPORTED_LANGUAGES, translations } from "../../constants/translations";
 import { useState, useRef, useEffect } from "react";
+import { GlobeIcon, BellIcon, CheckIcon } from "../common/Icons";
 
 export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
   const { t, lang, changeLang, notifRead, user, displayName, displayRole } = useDashboard();
@@ -58,7 +59,7 @@ export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
             onClick={() => setLangMenuOpen((o) => !o)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#f4efe6] dark:bg-[#0f1110] border border-[#ded5c2] dark:border-[#252a25] text-xs font-bold text-[#064d2c] dark:text-white shadow-sm cursor-pointer"
           >
-            <span className="text-xs">🌐</span>
+            <GlobeIcon className="w-3.5 h-3.5 text-[#064d2c] dark:text-emerald-400" />
             <span>{t.langLabel}</span>
             <svg
               className="w-3.5 h-3.5 text-[#064d2c] dark:text-emerald-400 stroke-current stroke-[2.5] transition-transform duration-200"
@@ -78,7 +79,7 @@ export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
                   className="w-full text-left px-3.5 py-2 flex items-center justify-between text-[#064d2c] dark:text-[#e8e4dc] hover:bg-emerald-50 dark:hover:bg-[#1c3c2a] transition-colors cursor-pointer"
                 >
                   <span>{translations[code]?.langLabel || code}</span>
-                  {lang === code && <span className="text-emerald-700 dark:text-emerald-400 font-bold">✓</span>}
+                  {lang === code && <CheckIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />}
                 </button>
               ))}
             </div>
@@ -92,7 +93,7 @@ export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
           onClick={onOpenNotif}
           className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-[#f4efe6] dark:bg-[#0f1110] border border-[#ded5c2] dark:border-[#252a25] text-[#064d2c] dark:text-white shadow-sm cursor-pointer"
         >
-          <span className="text-base">🔔</span>
+          <BellIcon className="w-5 h-5 text-[#064d2c] dark:text-emerald-400" />
           {!notifRead && (
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#f59e0b] ring-2 ring-white dark:ring-[#11271b]" />
           )}

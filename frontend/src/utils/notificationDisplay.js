@@ -1,11 +1,11 @@
 // Maps backend Notification.notification_type/severity onto the presentation
-// classes/icons the UI mockups already used for the (previously hardcoded) alerts.
+// classes/icon types used for alerts.
 const TYPE_ICONS = {
-  RISK_ALERT: "⚠️",
-  RECOMMENDATION: "❗",
-  BATCH_REMINDER: "🌽",
-  WEATHER_ALERT: "🌧️",
-  SYSTEM: "💡",
+  RISK_ALERT: "alert",
+  RECOMMENDATION: "recommendation",
+  BATCH_REMINDER: "corn",
+  WEATHER_ALERT: "weather",
+  SYSTEM: "lightbulb",
 };
 
 const SEVERITY_STYLES = {
@@ -27,9 +27,9 @@ const SEVERITY_STYLES = {
 };
 
 export function getNotificationDisplay(notification) {
-  const icon = TYPE_ICONS[notification.notification_type] || "🔔";
+  const icon = TYPE_ICONS[notification.notification_type] || "bell";
   const style = SEVERITY_STYLES[notification.severity] || SEVERITY_STYLES.INFO;
-  return { icon, ...style };
+  return { icon, iconType: icon, ...style };
 }
 
 export function formatRelativeTime(isoString) {

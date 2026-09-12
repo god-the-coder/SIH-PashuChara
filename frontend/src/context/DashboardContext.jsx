@@ -103,12 +103,12 @@ export function DashboardProvider({ children }) {
     setIsDark((prev) => {
       const next = !prev;
       const msgs = {
-        hi: next ? "डार्क मोड सक्रिय 🌙" : "लाइट मोड सक्रिय ☀️",
-        en: next ? "Dark mode active 🌙" : "Light mode active ☀️",
-        mr: next ? "डार्क मोड सक्रिय 🌙" : "लाइट मोड सक्रिय ☀️",
-        gu: next ? "ડાર્ક મોડ સક્રિય 🌙" : "લાઇટ મોડ સક્રિય ☀️",
-        kn: next ? "ಡಾರ್ಕ್ ಮೋಡ್ ಸಕ್ರಿಯ 🌙" : "ಲೈಟ್ ಮೋಡ್ ಸಕ್ರಿಯ ☀️",
-        ta: next ? "டார்க் பயன்முறை இயக்கப்பட்டது 🌙" : "லைட் பயன்முறை இயக்கப்பட்டது ☀️",
+        hi: next ? "डार्क मोड सक्रिय" : "लाइट मोड सक्रिय",
+        en: next ? "Dark mode active" : "Light mode active",
+        mr: next ? "डार्क मोड सक्रिय" : "लाइट मोड सक्रिय",
+        gu: next ? "ડાર્ક મોડ સક્રિય" : "લાઇટ મોડ સક્રિય",
+        kn: next ? "ಡಾರ್ಕ್ ಮೋಡ್ ಸಕ್ರಿಯ" : "ಲೈಟ್ ಮೋಡ್ ಸಕ್ರಿಯ",
+        ta: next ? "டார்க் பயன்முறை இயக்கப்பட்டது" : "லைட் பயன்முறை இயக்கப்பட்டது",
       };
       showToast(msgs[lang] ?? msgs["hi"]);
       return next;
@@ -127,7 +127,7 @@ export function DashboardProvider({ children }) {
   // Notifications
   const markAllRead = useCallback(() => {
     setNotifRead(true);
-    showToast(t.toastAllRead || "सभी सूचनाएं पढ़ी गईं ✓");
+    showToast(t.toastAllRead || "सभी सूचनाएं पढ़ी गईं");
   }, [t, showToast]);
 
   // Auth operations
@@ -144,7 +144,7 @@ export function DashboardProvider({ children }) {
     };
     setUser(updated);
     localStorage.setItem("pashuchaara_user", JSON.stringify(updated));
-    showToast(`नमस्ते ${updated.name || "किसान जी"}! स्वागत है 🌾`);
+    showToast(`नमस्ते ${updated.name || "किसान जी"}! स्वागत है`);
   }, [showToast]);
 
   const logout = useCallback(() => {
@@ -160,7 +160,7 @@ export function DashboardProvider({ children }) {
     };
     setUser(loggedOutUser);
     localStorage.setItem("pashuchaara_user", JSON.stringify(loggedOutUser));
-    showToast("सफलतापूर्वक लॉग आउट हो गया 🔒");
+    showToast("सफलतापूर्वक लॉग आउट हो गया");
   }, [showToast]);
 
   const updateProfile = useCallback((fields) => {
@@ -169,7 +169,7 @@ export function DashboardProvider({ children }) {
       localStorage.setItem("pashuchaara_user", JSON.stringify(updated));
       return updated;
     });
-    showToast("प्रोफ़ाइल जानकारी सुरक्षित की गई! ✓");
+    showToast("प्रोफ़ाइल जानकारी सुरक्षित की गई!");
   }, [showToast]);
 
   const openAuthModal = useCallback((step = "login") => {
@@ -183,7 +183,7 @@ export function DashboardProvider({ children }) {
 
   const clearCache = useCallback(() => {
     sessionStorage.clear();
-    showToast("ऐप कैश व अस्थायी फाइलें सफलतापूर्वक साफ हुईं! 🧹");
+    showToast("ऐप कैश व अस्थायी फाइलें सफलतापूर्वक साफ हुईं!");
   }, [showToast]);
 
   const deleteAccount = useCallback(() => {
@@ -204,7 +204,7 @@ export function DashboardProvider({ children }) {
       cattleDetails: [],
     };
     setUser(guestUser);
-    showToast("खाता व स्थानीय डेटा हटा दिया गया। 🗑️");
+    showToast("खाता व स्थानीय डेटा हटा दिया गया।");
   }, [showToast]);
 
   // Dynamic translated display name, role, and greeting name

@@ -1,5 +1,5 @@
 """
-URL configuration for PashuChara AI project.
+URL configuration for PashuiChara project.
 """
 from django.conf import settings
 from django.conf.urls.static import static

@@ -9,6 +9,7 @@ import SplashPage from '../pages/SplashPage'
 import OnboardingPage from '../pages/OnboardingPage'
 import NewInspectionPage from '../pages/NewInspectionPage'
 import InspectionQuestionnairePage from '../pages/InspectionQuestionnairePage'
+import AiQuestionnairePage from '../pages/AiQuestionnairePage'
 import ResultsPage from '../pages/ResultsPage'
 import BatchesPage from '../pages/BatchesPage'
 import HistoryPage from '../pages/HistoryPage'
@@ -87,6 +88,10 @@ export const router = createBrowserRouter([
       {
         path: '/inspect/questions',
         element: <InspectionQuestionnairePage />,
+      },
+      {
+        path: '/inspect/ai-questions',
+        element: <AiQuestionnairePage />,
       },
       {
         path: '/results/:id',

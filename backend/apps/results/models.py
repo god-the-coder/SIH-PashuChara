@@ -13,7 +13,7 @@ class RiskCategory(models.TextChoices):
 
 class Result(models.Model):
     """AI-generated visual assessment for an inspection. Structure agreed against
-    the PashuChara AI inspection-report mockups (risk trend, detailed report)."""
+    the PashuiChara inspection-report mockups (risk trend, detailed report)."""
 
     inspection = models.OneToOneField(
         Inspection,

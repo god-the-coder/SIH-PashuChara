@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import { SUPPORTED_LANGUAGES, translations } from "../constants/translations";
+import { CheckIcon } from "../components/common/Icons";
 
 // Language metadata for bottom sheet
 const LANG_META = [
@@ -78,8 +79,8 @@ function SplashContent() {
               </div>
               <div>
                 <div className="flex items-baseline tracking-tight leading-none">
-                  <span className="text-white font-extrabold text-xl">Pashu</span>
-                  <span className="text-emerald-400 font-extrabold text-xl">Chaara</span>
+                  <span className="text-white font-extrabold text-xl">Pashui</span>
+                  <span className="text-emerald-400 font-extrabold text-xl">Chara</span>
                 </div>
                 <p className="text-[11px] font-medium text-emerald-200/90 mt-0.5">
                   पशु चारा गुणवत्ता साथी
@@ -210,7 +211,7 @@ function SplashContent() {
                   </div>
                   {isSelected && (
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-600 text-white text-xs">
-                      ✓
+                      <CheckIcon className="w-3.5 h-3.5 text-white" />
                     </span>
                   )}
                 </button>

@@ -1,8 +1,8 @@
-# PashuChara AI
+# PashuiChara
 
 ## Project Requirements & Architecture Specification
 
-**Project:** PashuChara AI
+**Project:** PashuiChara
 **Purpose:** Smart visual inspection of silage and animal feed for farmers
 **Stage:** SIH Project — Backend Implementation
 **Document Type:** Source of Truth for Development Agents
@@ -11,7 +11,7 @@
 
 # 1. Project Overview
 
-PashuChara AI is a farmer-focused application that helps farmers inspect the visible condition and quality of:
+PashuiChara is a farmer-focused application that helps farmers inspect the visible condition and quality of:
 
 * Silage
 * Animal feed
@@ -194,7 +194,7 @@ The system should avoid presenting uncertain predictions as absolute facts.
 
 This is an important product requirement.
 
-PashuChara AI is a visual inspection/decision-support system.
+PashuiChara is a visual inspection/decision-support system.
 
 It must not falsely claim that visual AI analysis can replace laboratory testing for properties that require physical or chemical measurement.
 
@@ -717,7 +717,7 @@ When a requirement is unclear, inspect the existing project documentation and im
 
 # 29. Implementation Philosophy
 
-PashuChara AI should be built as a maintainable production-oriented application, not as a quick prototype with all logic inside a few files.
+PashuiChara should be built as a maintainable production-oriented application, not as a quick prototype with all logic inside a few files.
 
 Priorities:
 
@@ -762,7 +762,7 @@ Do not expand the product scope during implementation.
 
 # 31. Golden Rule
 
-**Implement the finalized PashuChara AI architecture exactly as specified.**
+**Implement the finalized PashuiChara architecture exactly as specified.**
 
 The development agent's job is to implement the project, not redesign it.
 

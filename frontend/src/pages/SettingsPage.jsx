@@ -4,6 +4,7 @@ import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import { SUPPORTED_LANGUAGES, translations } from "../constants/translations";
+import { SunIcon, MoonIcon, UsersIcon, SettingsIcon, BroomIcon, TrashIcon, AlertTriangleIcon, CloseIcon, CheckIcon } from "../components/common/Icons";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export default function SettingsPage() {
     setNewUserModalOpen(false);
     setNewUserName("");
     setNewUserPhone("");
-    showToast(`नया उपयोगकर्ता "${newUserName}" सक्रिय किया गया! 👤`);
+    showToast(`नया उपयोगकर्ता "${newUserName}" सक्रिय किया गया!`);
   };
 
   const demoProfiles = [
@@ -61,7 +62,7 @@ export default function SettingsPage() {
       cattleCount: profile.cattle,
       location: profile.location,
     });
-    showToast(`उपयोगकर्ता बदलकर "${profile.name}" किया गया! ✓`);
+    showToast(`उपयोगकर्ता बदलकर "${profile.name}" किया गया!`);
   };
 
   return (
@@ -78,8 +79,9 @@ export default function SettingsPage() {
         <main className="p-4 space-y-4 flex-1 overflow-y-auto">
           {/* SECTION 1: Appearance & Display */}
           <div className="bg-white dark:bg-[#181e18] p-4 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3.5">
-            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-              {t.appearanceSectionTitle || "🖥️ डिस्प्ले व थीम (Appearance)"}
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
+              <SunIcon className="w-3.5 h-3.5" />
+              <span>{t.appearanceSectionTitle || "डिस्प्ले व थीम (Appearance)"}</span>
             </h3>
 
             {/* Dark / Light Mode Toggle */}
@@ -88,8 +90,18 @@ export default function SettingsPage() {
                 <span className="text-xs font-bold text-[#064d2c] dark:text-white block">
                   {t.themeModeLabel || "डार्क / लाइट मोड (Screen Theme)"}
                 </span>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                  {isDark ? "डार्क थीम सक्रिय 🌙" : "लाइट थीम सक्रिय ☀️"}
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                  {isDark ? (
+                    <>
+                      <span>डार्क थीम सक्रिय</span>
+                      <MoonIcon className="w-3 h-3 text-emerald-600" />
+                    </>
+                  ) : (
+                    <>
+                      <span>लाइट थीम सक्रिय</span>
+                      <SunIcon className="w-3 h-3 text-amber-500" />
+                    </>
+                  )}
                 </span>
               </div>
               <button
@@ -163,8 +175,9 @@ export default function SettingsPage() {
           {/* SECTION 2: User Profiles & Switcher */}
           <div className="bg-white dark:bg-[#181e18] p-4 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-                {t.userManagementTitle || "👥 उपयोगकर्ता प्रबंधन (User Accounts)"}
+              <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
+                <UsersIcon className="w-3.5 h-3.5" />
+                <span>{t.userManagementTitle || "उपयोगकर्ता प्रबंधन (User Accounts)"}</span>
               </h3>
               <button
                 onClick={() => setNewUserModalOpen(true)}
@@ -178,41 +191,43 @@ export default function SettingsPage() {
               <div className="p-3 rounded-2xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#2D5A3D] flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] text-white flex items-center justify-center font-bold text-xs">
-                    ✓
+                    {user?.name?.[0]?.toUpperCase() || "R"}
                   </div>
                   <div>
                     <span className="text-xs font-black text-[#064d2c] dark:text-white block">
-                      {user?.name || "रमेश चौधरी"} ({t.activeAccountTag || "सक्रिय खाता"})
+                      {displayName}
                     </span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                      +91 {user?.phone || "9876543210"} • {user?.cattleCount || 24} {t.cattleCow?.split(" ")[0] || "पशु"}
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <span>सक्रिय प्रोफ़ाइल</span>
+                      <CheckIcon className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black">
-                  {t.activeAccountTag || "सक्रिय"}
-                </span>
               </div>
 
-              {/* Quick Switch Profiles */}
-              {demoProfiles
-                .filter((p) => p.phone !== user?.phone)
+              {availableProfiles
+                .filter((p) => p.name !== displayName)
                 .map((profile) => (
                   <div
-                    key={profile.phone}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-[#141914] border border-[#ded5c2] dark:border-[#242824]"
+                    key={profile.id}
+                    className="p-3 rounded-2xl bg-[#faf7f0] dark:bg-[#0f1411] border border-[#ded5c2] dark:border-[#242824] flex items-center justify-between"
                   >
-                    <div>
-                      <span className="text-xs font-bold text-[#064d2c] dark:text-white block">
-                        {profile.label}
-                      </span>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                        +91 {profile.phone} • {profile.cattle} {t.cattleCow?.split(" ")[0] || "पशु"}
-                      </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-[#202822] text-gray-700 dark:text-gray-300 flex items-center justify-center font-bold text-xs">
+                        {profile.name[0]}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                          {profile.name}
+                        </span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                          {profile.location} · {profile.cattleCount} पशु
+                        </span>
+                      </div>
                     </div>
                     <button
-                      onClick={() => handleSwitchToDemoUser(profile)}
-                      className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/10 hover:bg-emerald-50 text-xs font-bold text-[#064d2c] dark:text-gray-200 cursor-pointer"
+                      onClick={() => handleSwitchProfile(profile)}
+                      className="px-3 py-1 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-[11px] font-bold shadow-xs cursor-pointer"
                     >
                       {t.switchUserBtn || "स्विच करें"}
                     </button>
@@ -223,8 +238,9 @@ export default function SettingsPage() {
 
           {/* SECTION 3: Storage, Cache & Data Management */}
           <div className="bg-white dark:bg-[#181e18] p-4 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
-            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-              {t.storageSectionTitle || "💾 स्टोरेज व डेटा प्रबंधन (Storage & Data)"}
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span>{t.storageSectionTitle || "स्टोरेज व डेटा प्रबंधन (Storage & Data)"}</span>
             </h3>
 
             {/* Clear Cache */}
@@ -239,9 +255,10 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={clearCache}
-                className="px-3.5 py-1.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] hover:bg-gray-100 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] hover:bg-gray-100 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 cursor-pointer flex items-center gap-1"
               >
-                {t.clearCacheBtn || "साफ करें 🧹"}
+                <span>{t.clearCacheBtn || "साफ करें"}</span>
+                <BroomIcon className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -257,9 +274,10 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => setDeleteConfirmOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 cursor-pointer flex items-center gap-1"
               >
-                {t.deleteAccountBtn || "हटाएं 🗑️"}
+                <span>{t.deleteAccountBtn || "हटाएं"}</span>
+                <TrashIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -269,7 +287,9 @@ export default function SettingsPage() {
         {deleteConfirmOpen && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#FAF7F0] dark:bg-[#16201a] w-full max-w-xs rounded-3xl p-5 border border-[#ded5c2] dark:border-[#242824] shadow-2xl text-center">
-              <span className="text-3xl">⚠️</span>
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center mx-auto mb-2">
+                <AlertTriangleIcon className="w-6 h-6" />
+              </div>
               <h3 className="text-sm font-black text-[#064d2c] dark:text-white mt-2">
                 {t.confirmDeleteTitle || "क्या आप डेटा हटाना चाहते हैं?"}
               </h3>
@@ -308,9 +328,9 @@ export default function SettingsPage() {
                 </h3>
                 <button
                   onClick={() => setNewUserModalOpen(false)}
-                  className="w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-bold text-gray-500 hover:text-black cursor-pointer"
+                  className="w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 hover:text-black cursor-pointer"
                 >
-                  ✕
+                  <CloseIcon className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleAddNewUser} className="mt-3 space-y-3">

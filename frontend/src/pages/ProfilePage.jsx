@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import BottomNavBar from "../components/layout/BottomNavBar";
+import { CameraIcon, MicIcon, CowIcon, CheckIcon } from "../components/common/Icons";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function ProfilePage() {
   // Simulated Voice-Assisted Form Filling
   const handleVoiceFill = () => {
     setIsListening(true);
-    showToast("🎙️ आवाज़ सुन रहे हैं... कृपया विवरण बोलें");
+    showToast("आवाज़ सुन रहे हैं... कृपया विवरण बोलें");
     setTimeout(() => {
       setIsListening(false);
       setFormData({
@@ -38,7 +39,7 @@ export default function ProfilePage() {
         gender: "male",
         avatar: formData.avatar,
       });
-      showToast("✓ बोलकर विवरण सफलतापूर्वक दर्ज हो गया!");
+      showToast("बोलकर विवरण सफलतापूर्वक दर्ज हो गया!");
     }, 1800);
   };
 
@@ -50,7 +51,7 @@ export default function ProfilePage() {
         const url = event.target.result;
         setFormData((prev) => ({ ...prev, avatar: url }));
         updateProfile({ avatar: url });
-        showToast("प्रोफ़ाइल फोटो अपडेट हो गई! 📸");
+        showToast("प्रोफ़ाइल फोटो अपडेट हो गई!");
       };
       reader.readAsDataURL(file);
     }
@@ -69,7 +70,7 @@ export default function ProfilePage() {
       gender: formData.gender,
       avatar: formData.avatar,
     });
-    showToast("व्यक्तिगत जानकारी सुरक्षित की गई! ✓");
+    showToast("व्यक्तिगत जानकारी सुरक्षित की गई!");
   };
 
   const initials = formData.name
@@ -113,7 +114,7 @@ export default function ProfilePage() {
                 aria-label="Upload Photo"
                 className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-[#2D5A3D] text-white flex items-center justify-center text-xs shadow-md border-2 border-white dark:border-[#181e18] cursor-pointer hover:bg-[#1b4329]"
               >
-                📷
+                <CameraIcon className="w-3.5 h-3.5 text-white" />
               </button>
               <input
                 ref={fileInputRef}
@@ -144,7 +145,7 @@ export default function ProfilePage() {
           {/* Voice Form Filling Banner */}
           <div className="p-3.5 rounded-3xl bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-[#16291b] dark:to-[#222116] border border-[#d2e0d4] dark:border-[#334636] flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2.5">
-              <span className="text-2xl animate-pulse">🎙️</span>
+              <MicIcon className="w-6 h-6 text-emerald-800 dark:text-emerald-300 animate-pulse shrink-0" />
               <div>
                 <span className="text-xs font-black text-[#064d2c] dark:text-white block">
                   {t.voiceFillBannerTitle || "बोलकर प्रोफ़ाइल भरें"}
@@ -163,7 +164,14 @@ export default function ProfilePage() {
                   : "bg-[#2D5A3D] hover:bg-[#1E442B] text-white"
               }`}
             >
-              {isListening ? (t.listeningText || "सुन रहे हैं...") : (t.speakBtnText || "बोलें 🎙️")}
+              {isListening ? (
+                t.listeningText || "सुन रहे हैं..."
+              ) : (
+                <span className="flex items-center gap-1">
+                  <MicIcon className="w-3 h-3" />
+                  <span>{t.speakBtnText || "बोलें"}</span>
+                </span>
+              )}
             </button>
           </div>
 
@@ -251,8 +259,9 @@ export default function ProfilePage() {
             {/* Number of Cattle */}
             <div className="bg-white dark:bg-[#181e18] p-3.5 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-xs">
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-black text-[#064d2c] dark:text-white">
-                  {t.totalCattleFieldLabel || "पशुओं की कुल संख्या (Total Cattle) 🐄"}
+                <label className="text-xs font-black text-[#064d2c] dark:text-white flex items-center gap-1.5">
+                  <span>{t.totalCattleFieldLabel || "पशुओं की कुल संख्या (Total Cattle)"}</span>
+                  <CowIcon className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
                 </label>
                 <button
                   type="button"
@@ -291,7 +300,7 @@ export default function ProfilePage() {
                 className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
               >
                 <span>{t.saveProfileChangesBtn || t.save || "प्रोफ़ाइल सुरक्षित करें"}</span>
-                <span className="text-sm">✓</span>
+                <CheckIcon className="w-4 h-4 text-white" />
               </button>
             </div>
           </form>

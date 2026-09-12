@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import { getActiveBatch, getBatchAgeDays, getBatchReport, saveBatchAnalysis } from "../utils/batchStore";
+import { MicroscopeIcon, CheckIcon, SparklesIcon } from "../components/common/Icons";
 
 export default function InspectionQuestionnairePage() {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ export default function InspectionQuestionnairePage() {
     // Simulate AI diagnostic pipeline
     setTimeout(() => {
       setIsSubmitting(false);
-      navigate(`/results/${activeBatchId}`);
+      navigate(`/inspect/ai-questions`);
     }, 1200);
   };
 
@@ -110,8 +111,8 @@ export default function InspectionQuestionnairePage() {
         {/* Loading Overlay */}
         {isSubmitting && (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 border-2 border-white/30 flex items-center justify-center text-2xl animate-spin mb-3">
-              🔬
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border-2 border-white/30 flex items-center justify-center mb-3">
+              <MicroscopeIcon className="w-7 h-7 text-emerald-300 animate-pulse" />
             </div>
             <h3 className="text-base font-black text-white">
               {t.analyzingFodderTitle || "चारे का AI विश्लेषण हो रहा है..."}
@@ -240,7 +241,7 @@ export default function InspectionQuestionnairePage() {
                   }`}
                 >
                   <span>{opt.label}</span>
-                  {formData.badSmell === opt.label && <span className="font-bold">✓</span>}
+                  {formData.badSmell === opt.label && <CheckIcon className="w-4 h-4 text-white" />}
                 </button>
               ))}
             </div>
@@ -280,7 +281,7 @@ export default function InspectionQuestionnairePage() {
               className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
             >
               <span>{t.btnAnalyzeFodder || "AI गुणवत्ता विश्लेषण प्रारंभ करें"}</span>
-              <span className="text-sm">✨</span>
+              <SparklesIcon className="w-4 h-4 text-emerald-200" />
             </button>
           </div>
         </form>

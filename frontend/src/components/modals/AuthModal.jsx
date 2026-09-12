@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDashboard } from "../../context/DashboardContext";
+import { WheatIcon, LockIcon, UserIcon, CloseIcon, CheckIcon } from "../common/Icons";
 
 export default function AuthModal() {
   const { authModalOpen, authModalStep, closeAuthModal, login, showToast, t } = useDashboard();
@@ -82,17 +83,17 @@ export default function AuthModal() {
         {/* Close Button */}
         <button
           onClick={closeAuthModal}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-300 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 flex items-center justify-center text-gray-500 dark:text-gray-300 transition-colors cursor-pointer"
         >
-          ✕
+          <CloseIcon className="w-4 h-4" />
         </button>
 
         {/* STEP 1: Phone (Primary) + Google (Secondary) */}
         {step === "login" && (
           <div className="space-y-4">
             <div className="text-center pt-2 pb-1">
-              <div className="w-12 h-12 rounded-2xl bg-[#ede6d8] dark:bg-[#252c25] text-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
-                🌾
+              <div className="w-12 h-12 rounded-2xl bg-[#ede6d8] dark:bg-[#252c25] flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+                <WheatIcon className="w-6 h-6 text-emerald-800 dark:text-emerald-300" />
               </div>
               <h2 className="text-xl font-black text-[#1c3328] dark:text-white">
                 {t.authModalTitle || "पशुचारा AI में प्रवेश"}
@@ -164,7 +165,9 @@ export default function AuthModal() {
         {step === "otp" && (
           <form onSubmit={handleVerifyOtp} className="space-y-4 pt-2">
             <div className="text-center">
-              <span className="text-2xl">🔐</span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 flex items-center justify-center mx-auto mb-1">
+                <LockIcon className="w-5 h-5" />
+              </div>
               <h3 className="text-lg font-black text-[#1c3328] dark:text-white mt-1">
                 {t.otpTitle || "OTP सत्यापन"}
               </h3>
@@ -225,7 +228,9 @@ export default function AuthModal() {
         {step === "survey" && (
           <form onSubmit={handleCompleteSurvey} className="space-y-3 pt-1">
             <div className="text-center pb-1">
-              <span className="text-2xl">👨‍🌾</span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 flex items-center justify-center mx-auto mb-1">
+                <UserIcon className="w-5 h-5" />
+              </div>
               <h3 className="text-lg font-black text-[#1c3328] dark:text-white mt-1">
                 {t.surveyTitle || "किसान प्रोफ़ाइल विवरण"}
               </h3>
@@ -262,8 +267,9 @@ export default function AuthModal() {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.totalCattleFieldLabel || "3. पशुओं की संख्या 🐄"}
+                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                  <span>{t.totalCattleFieldLabel || "3. पशुओं की संख्या"}</span>
+                  <CowIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                 </label>
                 <input
                   type="number"
@@ -277,11 +283,11 @@ export default function AuthModal() {
 
             <div>
               <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                {t.locationFieldLabel || "4. गाँव / जिला / राज्य (Location)"}
+                {t.locationLabel || "4. गाँव / ज़िला (Location)"}
               </label>
               <input
                 type="text"
-                placeholder={t.drawerLocationTag || "जैसे: करनाल, हरियाणा"}
+                placeholder="आनंद, गुजरात"
                 value={farmerDetails.location}
                 onChange={(e) => setFarmerDetails({ ...farmerDetails, location: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded6c5] dark:border-[#343e34] text-xs font-bold bg-white dark:bg-[#131613] text-gray-800 dark:text-white outline-none"
@@ -294,7 +300,7 @@ export default function AuthModal() {
                 className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-transform active:scale-[0.98]"
               >
                 <span>{t.saveProfileChangesBtn || "प्रोफ़ाइल सुरक्षित करें व शुरू करें"}</span>
-                <span className="text-sm">✓</span>
+                <CheckIcon className="w-4 h-4 text-white" />
               </button>
             </div>
           </form>

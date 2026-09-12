@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import { QRCodeSVG } from "qrcode.react";
 import { getBatchAgeDays, getBatchById, getBatchReport } from "../utils/batchStore";
+import { CloseIcon } from "../components/common/Icons";
 
 /* ─── Static baseline scan records (Professional Lab Data) ─── */
 const SCAN_DATA = {
@@ -859,9 +860,10 @@ export default function LabReportPage() {
               </h3>
               <button
                 onClick={() => setPartnerModalOpen(false)}
-                className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold"
+                aria-label="Close"
+                className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               >
-                ✕
+                <CloseIcon className="w-3.5 h-3.5" />
               </button>
             </div>
             <p className="text-[11px] text-slate-600 dark:text-slate-400">

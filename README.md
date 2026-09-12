@@ -1,1 +1,1 @@
-# PashuChara-AI
+# PashuiChara

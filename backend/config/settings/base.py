@@ -166,8 +166,8 @@ REST_FRAMEWORK = {
 
 # drf-spectacular Settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'PashuChara AI API',
-    'DESCRIPTION': 'API documentation for PashuChara AI backend services.',
+    'TITLE': 'PashuiChara API',
+    'DESCRIPTION': 'API documentation for PashuiChara backend services.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

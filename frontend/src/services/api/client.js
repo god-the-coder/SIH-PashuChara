@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../../config/env'
 import { toApiRequestError } from './error'
 
 /**
- * The single HTTP client for PashuChara-AI.
+ * The single HTTP client for PashuiChara.
  *
  * Feature services import this instance rather than creating their own Axios
  * clients. Authentication-specific request handling belongs in the

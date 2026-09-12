@@ -3,6 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import {
+  ShareIcon,
+  ClockIcon,
+  CheckIcon,
+  LightbulbIcon,
+  CameraIcon,
+} from "../components/common/Icons";
 
 export default function ResultsPage() {
   const navigate = useNavigate();
@@ -43,7 +50,7 @@ export default function ResultsPage() {
         text: `${fodderType}: ${resultData.statusLabel}. ${resultData.summary}`,
       }).catch(() => {});
     } else {
-      showToast(t.toastAllRead ? "रिपोर्ट लिंक कॉपी हो गया! 📋" : "Report link copied! 📋");
+      showToast(t.toastAllRead ? "रिपोर्ट लिंक कॉपी हो गया!" : "Report link copied!");
     }
   };
 
@@ -58,9 +65,10 @@ export default function ResultsPage() {
           actionBtn={
             <button
               onClick={handleShare}
-              className="w-8 h-8 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-gray-50"
+              aria-label="Share Report"
+              className="w-8 h-8 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-emerald-800 dark:text-emerald-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
             >
-              📤
+              <ShareIcon className="w-4 h-4" />
             </button>
           }
         />
@@ -92,7 +100,8 @@ export default function ResultsPage() {
 
             {/* Usability Window */}
             <div className="mt-3.5 pt-3 border-t border-white/15 flex items-center gap-2 text-xs font-bold text-emerald-200">
-              <span>⏳ {resultData.estimatedUsabilityWindow}</span>
+              <ClockIcon className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>{resultData.estimatedUsabilityWindow}</span>
             </div>
           </div>
 
@@ -104,7 +113,7 @@ export default function ResultsPage() {
             <ul className="space-y-2">
               {resultData.reasons.map((r, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300 leading-snug">
-                  <span className="text-emerald-700 dark:text-emerald-400 font-bold shrink-0">✓</span>
+                  <CheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   <span>{r}</span>
                 </li>
               ))}
@@ -119,7 +128,7 @@ export default function ResultsPage() {
             <ul className="space-y-2">
               {resultData.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300 leading-snug">
-                  <span className="text-amber-600 font-bold shrink-0">💡</span>
+                  <LightbulbIcon className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                   <span>{rec}</span>
                 </li>
               ))}
@@ -138,7 +147,8 @@ export default function ResultsPage() {
               onClick={() => navigate("/inspect/new")}
               className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
             >
-              <span>{t.newScanActionBtn || "नई जाँच शुरू करें 📸"}</span>
+              <CameraIcon className="w-4 h-4" />
+              <span>{t.newScanActionBtn || "नई जाँच शुरू करें"}</span>
             </button>
           </div>
         </main>

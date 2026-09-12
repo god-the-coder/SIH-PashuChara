@@ -2,6 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import {
+  AlertTriangleIcon,
+  CornIcon,
+  LightbulbIcon,
+  CloudRainIcon,
+} from "../components/common/Icons";
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -18,7 +24,7 @@ export default function NotificationsPage() {
       actionRoute: "/inspect/new?type=feed",
       colorClasses: "bg-amber-500/10 dark:bg-[#2d2319] border-amber-500/30",
       iconClasses: "bg-amber-500/20 text-amber-800 dark:text-[#fcd34d]",
-      icon: "⚠️",
+      icon: <CloudRainIcon className="w-5 h-5" />,
     },
     {
       id: "alert-2",
@@ -30,7 +36,7 @@ export default function NotificationsPage() {
       actionRoute: "/inspect/new?type=silage",
       colorClasses: "bg-emerald-500/10 dark:bg-[#161914] border-emerald-500/30",
       iconClasses: "bg-emerald-500/20 text-emerald-800 dark:text-[#86efac]",
-      icon: "🌽",
+      icon: <CornIcon className="w-5 h-5" />,
     },
     {
       id: "alert-3",
@@ -42,7 +48,7 @@ export default function NotificationsPage() {
       actionRoute: null,
       colorClasses: "bg-blue-500/10 dark:bg-[#182736] border-blue-500/30",
       iconClasses: "bg-blue-500/20 text-blue-800 dark:text-[#93c5fd]",
-      icon: "💡",
+      icon: <LightbulbIcon className="w-5 h-5" />,
     },
   ];
 

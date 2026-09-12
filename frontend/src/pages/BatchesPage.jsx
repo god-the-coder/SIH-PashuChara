@@ -4,6 +4,7 @@ import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import { getBatchAgeDays, getBatches, saveBatches, setActiveBatch } from "../utils/batchStore";
+import { CloseIcon, PlusIcon, CornIcon, GrainIcon } from "../components/common/Icons";
 
 export default function BatchesPage() {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ export default function BatchesPage() {
     saveBatches(updated);
     setModalOpen(false);
     setNewBatchName("");
-    showToast(t.batchAddedToast || "New fodder batch added successfully! 📦");
+    showToast(t.batchAddedToast || "New fodder batch added successfully!");
   };
 
   // Update existing batch in-place; keep only latest 2 scans
@@ -92,7 +93,7 @@ export default function BatchesPage() {
         };
       })
     );
-    showToast(t.batchUpdatedToast || "Batch inspection updated ✓");
+    showToast(t.batchUpdatedToast || "Batch inspection updated");
   };
 
   // Expose via sessionStorage contract for InspectionQuestionnairePage
@@ -124,18 +125,24 @@ export default function BatchesPage() {
           title={t.batchesPageTitle || "साइलेज व चारा लॉट्स"}
           subtitle={t.batchesPageSub || "कुल भंडारित स्टॉक व आयु ट्रैकिंग"}
           backTo="/dashboard"
-          actionBtn={
-            <button
-              onClick={() => setModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-95"
-            >
-              {t.addBatchBtn || "+ नया बैच"}
-            </button>
-          }
         />
 
         {/* Batch List */}
         <main className="p-4 space-y-3 flex-1 overflow-y-auto">
+          {/* Action Row */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
+              {t.batchesPageTitle || "सिलेज / चारा बैच"}
+            </span>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-95 flex items-center gap-1"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>{(t.addBatchBtn || "नया बैच").replace("+", "").trim()}</span>
+            </button>
+          </div>
+
           {batches.map((batch) => {
             const displayLabel = batch.customLabel || t[batch.labelKey] || batch.labelKey;
             const displayType = t[batch.typeKey] || batch.typeKey;
@@ -149,14 +156,23 @@ export default function BatchesPage() {
                 className="p-4 rounded-2xl bg-white dark:bg-[#161c18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-2.5"
               >
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-black text-[#064d2c] dark:text-white">
-                      {displayLabel}
-                    </h3>
-                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                      {displayType}
-                    </span>
-                    <span className="block mt-1 text-[10px] font-mono text-gray-500 dark:text-gray-400">Batch ID: {batch.id}</span>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-[#0f1a12] border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center shrink-0 mt-0.5">
+                      {batch.inspectionType === "silage" || batch.typeKey === "batchTypeCorn" ? (
+                        <CornIcon className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+                      ) : (
+                        <GrainIcon className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-[#064d2c] dark:text-white">
+                        {displayLabel}
+                      </h3>
+                      <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                        {displayType}
+                      </span>
+                      <span className="block mt-1 text-[10px] font-mono text-gray-500 dark:text-gray-400">Batch ID: {batch.id}</span>
+                    </div>
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold ${batch.statusColor}`}>
                     {displayStatus}
@@ -208,9 +224,10 @@ export default function BatchesPage() {
                 </h3>
                 <button
                   onClick={() => setModalOpen(false)}
-                  className="w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-300 hover:text-black dark:hover:text-white cursor-pointer"
+                  aria-label="Close"
+                  className="w-7 h-7 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 hover:text-black dark:hover:text-white cursor-pointer"
                 >
-                  ✕
+                  <CloseIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -230,19 +247,31 @@ export default function BatchesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
                     {t.batchTypeLabel || "चारे का प्रकार"}
                   </label>
-                  <select
-                    value={newBatchTypeKey}
-                    onChange={(e) => setNewBatchTypeKey(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
-                  >
-                    <option value="batchTypeCorn">{t.batchTypeCorn || "मक्का साइलेज"}</option>
-                    <option value="batchTypeSorghum">{t.batchTypeSorghum || "ज्वार हरा चारा"}</option>
-                    <option value="batchTypeBerseem">{t.batchTypeBerseem || "बरसीम हरा चारा"}</option>
-                    <option value="batchTypeStraw">{t.batchTypeStraw || "गेहूं सूखा भूसा"}</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { key: "batchTypeCorn",    label: t.batchTypeCorn    || "मक्का साइलेज",   icon: <CornIcon  className="w-6 h-6" />, silage: true  },
+                      { key: "batchTypeSorghum", label: t.batchTypeSorghum || "ज्वार हरा चारा",  icon: <GrainIcon className="w-6 h-6" />, silage: false },
+                      { key: "batchTypeBerseem", label: t.batchTypeBerseem || "बरसीम हरा चारा", icon: <GrainIcon className="w-6 h-6" />, silage: false },
+                      { key: "batchTypeStraw",   label: t.batchTypeStraw   || "गेहूं सूखा भूसा", icon: <GrainIcon className="w-6 h-6" />, silage: false },
+                    ].map((opt) => (
+                      <button
+                        type="button"
+                        key={opt.key}
+                        onClick={() => setNewBatchTypeKey(opt.key)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          newBatchTypeKey === opt.key
+                            ? "bg-[#2D5A3D] text-white border-[#2D5A3D] shadow-xs"
+                            : "bg-white dark:bg-[#0f1411] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#242824]"
+                        }`}
+                      >
+                        {opt.icon}
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>

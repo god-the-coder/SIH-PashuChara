@@ -3,6 +3,14 @@ import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import { getBatchById, getBatchReport } from "../utils/batchStore";
+import {
+  ClipboardIcon,
+  MicroscopeIcon,
+  LightbulbIcon,
+  DocumentIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+} from "../components/common/Icons";
 
 // Multi-language content keyed by scan id, then by lang code
 const SCAN_DATA = {
@@ -18,9 +26,9 @@ const SCAN_DATA = {
     time: "11:30 AM",
     isSafe: true,
     safeLabel: {
-      en: "SAFE TO FEED ✓", hi: "खिलाने योग्य ✓",
-      mr: "खाण्यास सुरक्षित ✓", gu: "ખવડાવવા સલામત ✓",
-      kn: "ತಿನ್ನಿಸಲು ಸುರಕ್ಷಿತ ✓", ta: "உணவளிக்க பாதுகாப்பானது ✓",
+      en: "SAFE TO FEED", hi: "खिलाने योग्य",
+      mr: "खाण्यास सुरक्षित", gu: "ખવડાવવા સલામત",
+      kn: "ತಿನ್ನಿಸಲು ಸುರಕ್ಷಿತ", ta: "உணவளிக்க பாதுகாப்பானது",
     },
     safeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
     insights: {
@@ -88,9 +96,9 @@ const SCAN_DATA = {
     time: "04:15 PM",
     isSafe: false,
     safeLabel: {
-      en: "ATTENTION REQUIRED ⚠", hi: "सावधानी आवश्यक ⚠",
-      mr: "काळजी घ्या ⚠", gu: "ધ્યાન આપો ⚠",
-      kn: "ಗಮನ ಅಗತ್ಯ ⚠", ta: "கவனம் தேவை ⚠",
+      en: "ATTENTION REQUIRED", hi: "सावधानी आवश्यक",
+      mr: "काळजी घ्या", gu: "ધ્યાન આપો",
+      kn: "ಗಮನ ಅಗತ್ಯ", ta: "கவனம் தேவை",
     },
     safeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border-amber-300 dark:border-amber-700",
     insights: {
@@ -158,9 +166,9 @@ const SCAN_DATA = {
     time: "09:00 AM",
     isSafe: true,
     safeLabel: {
-      en: "SAFE TO FEED ✓", hi: "खिलाने योग्य ✓",
-      mr: "खाण्यास सुरक्षित ✓", gu: "ખવડાવવા સલામત ✓",
-      kn: "ತಿನ್ನಿಸಲು ಸುರಕ್ಷಿತ ✓", ta: "உணவளிக்க பாதுகாப்பானது ✓",
+      en: "SAFE TO FEED", hi: "खिलाने योग्य",
+      mr: "खाण्यास सुरक्षित", gu: "ખવડાવવા સલામત",
+      kn: "ತಿನ್ನಿಸಲು ಸುರಕ್ಷಿತ", ta: "உணவளிக்க பாதுகாப்பானது",
     },
     safeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
     insights: {
@@ -230,9 +238,9 @@ function buildFallbackEntry(batch, lang) {
     time: "—",
     isSafe: true,
     safeLabel: {
-      en: "SCAN COMPLETE ✓", hi: "जाँच पूरी ✓",
-      mr: "तपासणी पूर्ण ✓", gu: "તપાસ પૂર્ણ ✓",
-      kn: "ಸ್ಕ್ಯಾನ್ ಮುಗಿದಿದೆ ✓", ta: "ஸ்கேன் முடிந்தது ✓",
+      en: "SCAN COMPLETE", hi: "जाँच पूरी",
+      mr: "तपासणी पूर्ण", gu: "તપાસ પૂર્ણ",
+      kn: "ಸ್ಕ್ಯಾನ್ ಮುಗಿದಿದೆ", ta: "ஸ்கேன் முடிந்தது",
     },
     safeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
     insights: {
@@ -308,7 +316,7 @@ export default function MoreInfoPage() {
     return (
       <div className="relative min-h-screen w-full flex justify-center bg-[#ede7db] dark:bg-[#050706]">
         <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col items-center justify-center p-8 text-center">
-          <span className="text-5xl mb-4">📋</span>
+          <ClipboardIcon className="w-12 h-12 text-emerald-700/60 dark:text-emerald-400/60 mb-4" />
           <h2 className="text-sm font-black text-gray-700 dark:text-gray-200">
             {t.recordNotFound || (lang === "hi" ? "रिकॉर्ड नहीं मिला" : "Record not found")}
           </h2>
@@ -363,8 +371,13 @@ export default function MoreInfoPage() {
               <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
                 {t.batchOverviewLabel || (lang === "hi" ? "बैच विवरण" : "Batch Overview")}
               </h3>
-              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border ${scan.safeColor}`}>
-                {safeLabelText}
+              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border flex items-center gap-1 ${scan.safeColor}`}>
+                <span>{safeLabelText}</span>
+                {scan.isSafe ? (
+                  <CheckIcon className="w-3 h-3" />
+                ) : (
+                  <AlertTriangleIcon className="w-3 h-3" />
+                )}
               </span>
             </div>
 
@@ -393,7 +406,7 @@ export default function MoreInfoPage() {
           {/* ── Card 2: AI Insights ── */}
           <div className="p-4 rounded-2xl bg-white dark:bg-[#161c18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-2.5">
             <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
-              <span className="text-base">🔬</span>
+              <MicroscopeIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               {t.keyInsightsLabel || (lang === "hi" ? "मुख्य AI निष्कर्ष" : "Key AI Insights")}
             </h3>
             <ul className="space-y-2">
@@ -414,7 +427,7 @@ export default function MoreInfoPage() {
           {/* ── Card 3: Farmer Recommendations ── */}
           <div className="p-4 rounded-2xl bg-white dark:bg-[#161c18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-2.5">
             <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
-              <span className="text-base">💡</span>
+              <LightbulbIcon className="w-4 h-4 text-amber-500" />
               {t.farmerRecsLabel || (lang === "hi" ? "किसान सुझाव" : "Farmer Recommendations")}
             </h3>
             <ul className="space-y-2">
@@ -438,7 +451,7 @@ export default function MoreInfoPage() {
               onClick={() => navigate(`/history/${id}/report`)}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#2D5A3D] to-[#1a4428] hover:from-[#1E442B] hover:to-[#153820] text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
             >
-              <span>📄</span>
+              <DocumentIcon className="w-4 h-4" />
               <span>{t.getFullReportBtn || (lang === "hi" ? "पूरी लैब रिपोर्ट देखें →" : "Get Full Lab Report →")}</span>
             </button>
           </div>

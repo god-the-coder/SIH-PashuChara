@@ -1,6 +1,6 @@
-# PashuChara-AI frontend
+# PashuiChara frontend
 
-React, Vite, Tailwind CSS, ESLint, and React Router power the PashuChara-AI frontend.
+React, Vite, Tailwind CSS, ESLint, and React Router power the PashuiChara frontend.
 
 Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` before using API-backed functionality.
 

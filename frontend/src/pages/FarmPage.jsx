@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDashboard } from "../context/DashboardContext";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
+import { BarnIcon, LocationPinIcon, CowIcon, MilkIcon, WheatIcon, ClipboardIcon, EditIcon } from "../components/common/Icons";
 
 export default function FarmPage() {
   const { t, showToast, user, displayName, displayLocation, updateProfile } = useDashboard();
@@ -29,7 +30,7 @@ export default function FarmPage() {
       location: farmLocation,
       cattleCount: farmData.totalCattle,
     });
-    showToast(t.farmUpdatedToast || "Farm details updated successfully! ✓");
+    showToast(t.farmUpdatedToast || "Farm details updated successfully!");
   };
 
   return (
@@ -54,27 +55,44 @@ export default function FarmPage() {
           title={t.farmPageTitle || "फार्म व पशु प्रबंधन"}
           subtitle={t.farmPageSub || "डेयरी विवरण व दैनिक चारा खपत"}
           backTo="/dashboard"
-          actionBtn={
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="px-2.5 py-1.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-emerald-800 dark:text-[#86efac] text-xs font-bold shadow-xs cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-transform active:scale-95"
-            >
-              {isEditing ? (t.cancel || "रद्द करें") : (t.edit || "बदलें ✏️")}
-            </button>
-          }
         />
 
         {/* Content */}
         <main className="p-4 space-y-3.5 flex-1 overflow-y-auto">
+          {/* Action Row */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
+              {t.farmPageTitle || "फार्म विवरण"}
+            </span>
+            <button
+              id="editFarmBtn"
+              aria-label="Edit Farm Info"
+              onClick={() => setIsEditing(!isEditing)}
+              className="px-3 py-1.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-emerald-800 dark:text-[#86efac] text-xs font-bold shadow-xs cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-transform active:scale-95 flex items-center gap-1"
+            >
+              {isEditing ? (
+                t.cancel || "रद्द करें"
+              ) : (
+                <>
+                  <span>{t.edit || "बदलें"}</span>
+                  <EditIcon className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Farm Hero Card */}
           <div className="p-4 rounded-3xl bg-gradient-to-br from-[#143c20] to-[#0a2211] text-white shadow-md border border-emerald-600/30">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl shadow-inner shrink-0">
-                🏡
+              <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shadow-inner shrink-0">
+                <BarnIcon className="w-6 h-6 text-emerald-200" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-black truncate">{displayFarmName}</h2>
-                <p className="text-xs text-emerald-200 mt-0.5">📍 {farmLocation}</p>
+                <div className="flex items-center gap-1 text-xs text-emerald-200 mt-0.5">
+                  <LocationPinIcon className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>{farmLocation}</span>
+                </div>
               </div>
             </div>
 
@@ -99,20 +117,23 @@ export default function FarmPage() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-2.5 rounded-2xl bg-[#faf7f0]/80 dark:bg-[#0f1411]/80 border border-[#ded5c2] dark:border-[#242824]">
                 <span className="text-lg font-black text-[#064d2c] dark:text-white">{farmData.totalCattle}</span>
-                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold">
-                  {t.totalCattleCard || "कुल पशु 🐄"}
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold flex items-center justify-center gap-1">
+                  <span>{t.totalCattleCard || "कुल पशु"}</span>
+                  <CowIcon className="w-3 h-3 text-[#064d2c] dark:text-emerald-400" />
                 </span>
               </div>
               <div className="p-2.5 rounded-2xl bg-[#faf7f0]/80 dark:bg-[#0f1411]/80 border border-[#ded5c2] dark:border-[#242824]">
                 <span className="text-lg font-black text-[#064d2c] dark:text-white">{farmData.milkingCows}</span>
-                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold">
-                  {t.milkingCowsCard || "दुधारू 🥛"}
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold flex items-center justify-center gap-1">
+                  <span>{t.milkingCowsCard || "दुधारू"}</span>
+                  <MilkIcon className="w-3 h-3 text-[#064d2c] dark:text-emerald-400" />
                 </span>
               </div>
               <div className="p-2.5 rounded-2xl bg-[#faf7f0]/80 dark:bg-[#0f1411]/80 border border-[#ded5c2] dark:border-[#242824]">
                 <span className="text-lg font-black text-[#064d2c] dark:text-white">{farmData.dailyFodderRequirementKg}</span>
-                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold">
-                  {t.dailyFodderCard || "दैनिक चारा 🌾"}
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 font-bold flex items-center justify-center gap-1">
+                  <span>{t.dailyFodderCard || "दैनिक चारा"}</span>
+                  <WheatIcon className="w-3 h-3 text-[#064d2c] dark:text-emerald-400" />
                 </span>
               </div>
             </div>
@@ -121,7 +142,7 @@ export default function FarmPage() {
           {/* Feeding Advice Card */}
           <div className="bg-white/90 dark:bg-[#161c18]/90 backdrop-blur-md p-4 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-base">📋</span>
+              <ClipboardIcon className="w-4 h-4 text-[#064d2c] dark:text-emerald-400" />
               <h3 className="text-xs font-black text-[#064d2c] dark:text-white">
                 {t.cattleScheduleTitle || "दैनिक चारा सारणी व सुझाव"}
               </h3>

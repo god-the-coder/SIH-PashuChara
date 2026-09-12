@@ -1,5 +1,5 @@
 /**
- * Centralized route path constants for PashuChara-AI.
+ * Centralized route path constants for PashuiChara.
  */
 export const ROUTES = {
   HOME: '/',

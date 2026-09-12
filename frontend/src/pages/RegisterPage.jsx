@@ -23,7 +23,7 @@ function RegisterPage() {
             </div>
             <CardTitle>Create Account</CardTitle>
             <CardDescription>
-              Join PashuChara-AI to optimize ration costs and animal productivity.
+              Join PashuiChara to optimize ration costs and animal productivity.
             </CardDescription>
           </CardHeader>
 

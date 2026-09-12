@@ -1,6 +1,6 @@
 # Frontend architecture
 
-PashuChara-AI uses a small, layer-oriented React structure. Files are added to a layer only when a concrete need exists; empty folders and placeholder abstractions are intentionally avoided.
+PashuiChara uses a small, layer-oriented React structure. Files are added to a layer only when a concrete need exists; empty folders and placeholder abstractions are intentionally avoided.
 
 ## Source structure
 

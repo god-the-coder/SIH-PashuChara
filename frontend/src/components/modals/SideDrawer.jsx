@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../../context/DashboardContext";
+import { UserIcon, CowIcon, SettingsIcon, PhoneIcon, MoonIcon, SunIcon, CloseIcon } from "../common/Icons";
 
 export default function SideDrawer({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -57,9 +58,9 @@ export default function SideDrawer({ isOpen, onClose }) {
             <button
               aria-label="Close Drawer"
               onClick={onClose}
-              className="absolute top-4 right-4 w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-sm transition-colors cursor-pointer"
+              className="absolute top-4 right-4 w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
             >
-              ✕
+              <CloseIcon className="w-4 h-4 text-white" />
             </button>
             <div className="flex items-center gap-3.5">
               <div className="w-13 h-13 rounded-2xl bg-white/15 text-emerald-200 border border-white/25 flex items-center justify-center font-black text-xl shadow-sm shrink-0">
@@ -80,25 +81,25 @@ export default function SideDrawer({ isOpen, onClose }) {
           <div className="p-3.5 flex-1 overflow-y-auto space-y-2">
             {[
               {
-                icon: "👤",
+                icon: <UserIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
                 title: t.menuPersonalInfoTitle || "व्यक्तिगत जानकारी",
                 sub: t.menuPersonalInfoSub || "नाम, आयु, फोटो, ईमेल व फोन विवरण",
                 action: "personalInfo",
               },
               {
-                icon: "🐄",
+                icon: <CowIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
                 title: t.menuCattleInfoTitle || "पशु जानकारी",
                 sub: t.menuCattleInfoSub || "नस्ल विकल्प (Gir, Sahiwal, Murrah)",
                 action: "cattleInfo",
               },
               {
-                icon: "⚙️",
+                icon: <SettingsIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
                 title: t.menuSettingsTitle || "ऐप सेटिंग्स",
                 sub: t.menuSettingsSub || "फॉन्ट आकार, कैश साफ करें व यूजर प्रबंधन",
                 action: "settings",
               },
               {
-                icon: "📞",
+                icon: <PhoneIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />,
                 title: t.menuSupportTitle || "सहायता व संपर्क",
                 sub: t.menuSupportSub || "टोल-फ्री 1800-180-1551 व वॉयस संदेश",
                 action: "support",
@@ -110,7 +111,7 @@ export default function SideDrawer({ isOpen, onClose }) {
                 className="w-full px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] hover:bg-gray-50 dark:hover:bg-[#202b23] border border-[#e3d9c8] dark:border-[#242824] flex items-center justify-between text-left transition-colors cursor-pointer shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
                     {icon}
                   </div>
                   <div className="min-w-0">
@@ -127,8 +128,12 @@ export default function SideDrawer({ isOpen, onClose }) {
             {/* Dark mode switch row */}
             <div className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#19211b] border border-[#e3d9c8] dark:border-[#242824] flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center text-base border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
-                  {isDark ? "🌙" : "☀️"}
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-[#161914] flex items-center justify-center border border-emerald-200/50 dark:border-emerald-700/30 shrink-0">
+                  {isDark ? (
+                    <MoonIcon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                  ) : (
+                    <SunIcon className="w-4 h-4 text-amber-600" />
+                  )}
                 </div>
                 <div>
                   <div className="text-xs font-bold text-[#142817] dark:text-[#e8e4dc]">

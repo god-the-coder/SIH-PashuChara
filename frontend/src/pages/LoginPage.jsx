@@ -1,92 +1,105 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
-import SubPageHeader from "../components/layout/SubPageHeader";
+import { WheatIcon, LockIcon } from "../components/common/Icons";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { t, login, showToast } = useDashboard();
-
   const [step, setStep] = useState("phone"); // "phone" | "otp"
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otp, setOtp] = useState(["1", "2", "3", "4", "5", "6"]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSendOtp = (e) => {
     e.preventDefault();
     if (phoneNumber.length < 10) {
-      showToast("कृपया 10 अंकों का सही मोबाइल नंबर दर्ज करें");
+      showToast("कृपया वैध 10-अंकीय मोबाइल नंबर दर्ज करें");
       return;
     }
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
       setStep("otp");
-      showToast("OTP भेजा गया (123456)");
-    }, 600);
-  };
-
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      login({
-        name: "रमेश चौधरी",
-        phone: "9876543210",
-        email: "ramesh.choudhary@dairyfarm.in",
-        role: "डेयरी किसान",
-      });
-      showToast("Google साइन-इन सफल! स्वागत है 🌾");
-      navigate("/dashboard");
+      showToast(`+91 ${phoneNumber} पर 6-अंकीय OTP भेजा गया`);
     }, 700);
   };
 
   const handleVerifyOtp = (e) => {
     e.preventDefault();
+    const entered = otp.join("");
+    if (entered.length < 6) {
+      showToast("कृपया पूरा 6-अंकीय OTP डालें");
+      return;
+    }
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      const isSuresh = phoneNumber === "9428011223";
-      const isRajesh = phoneNumber === "9812345678";
-      const name = isSuresh
-        ? "सुरेश पटेल"
-        : isRajesh
-        ? "राजेश कुमार"
-        : (phoneNumber === "9876543210" ? "रमेश चौधरी" : `किसान ${phoneNumber.slice(-4)}`);
-      const isCustom = phoneNumber !== "9876543210";
-
       login({
-        phone: phoneNumber || "9876543210",
-        name,
-        isCustomName: isCustom,
-        role: "डेयरी किसान",
-        cattleCount: isSuresh ? 18 : isRajesh ? 12 : 24,
-        location: isSuresh ? "आनंद, गुजरात" : isRajesh ? "लुधियाना, पंजाब" : "करनाल, हरियाणा",
+        id: "farmer_" + Date.now(),
+        name: "रमेश चौधरी",
+        phone: "+91 " + phoneNumber,
+        location: "आनंद, गुजरात",
+        farmType: "डेयरी फार्म (14 गायें)",
+        avatar: null,
       });
-      showToast(`सफलतापूर्वक लॉगिन हो गया! स्वागत है ${name} 🌾`);
       navigate("/dashboard");
-    }, 600);
+    }, 800);
+  };
+
+  const handleGoogleLogin = () => {
+    login({
+      id: "google_farmer_102",
+      name: "राजेश पटेल",
+      phone: "+91 98250 12345",
+      location: "मेहसाणा, गुजरात",
+      farmType: "गाय व भैंस पालन (22 पशु)",
+      avatar: null,
+    });
+    navigate("/dashboard");
+  };
+
+  const handleOtpChange = (index, val) => {
+    if (!/^\d*$/.test(val)) return;
+    const next = [...otp];
+    next[index] = val.slice(-1);
+    setOtp(next);
+    if (val && index < 5) {
+      document.getElementById(`otp-input-${index + 1}`)?.focus();
+    }
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#e8e4dc] flex justify-center bg-[#FAF7F0] dark:bg-[#0a0c0b] antialiased">
-      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#101210]">
-        {/* Header with language switcher */}
-        <SubPageHeader
-          title={t.drawerLoginLabel || "किसान लॉगिन"}
-          subtitle={t.authModalSub || "पशुचारा AI सुरक्षित प्रवेश"}
-          backTo="/dashboard"
-        />
+    <div
+      className="relative min-h-screen w-full flex justify-center bg-[#ECE8E1] dark:bg-black antialiased"
+      style={{ fontFamily: "'Hind', 'Poppins', sans-serif" }}
+    >
+      <div className="relative min-h-screen w-full max-w-[430px] flex flex-col justify-between overflow-hidden shadow-2xl bg-[#FAF7F0] dark:bg-[#0f1110]">
+        {/* Top bar with back */}
+        <header className="p-4 flex items-center justify-between z-10">
+          <button
+            onClick={() => (step === "otp" ? setStep("phone") : navigate("/dashboard"))}
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1c221c] border border-[#ded5c2] dark:border-[#2b332b] flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-xs cursor-pointer active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
+            {step === "phone" ? (t.loginStep1 || "चरण 1 / 2") : (t.loginStep2 || "चरण 2 / 2")}
+          </span>
+          <div className="w-10" />
+        </header>
 
         {/* Card Box */}
         <main className="p-5 my-auto">
           <div className="bg-white dark:bg-[#181e18] text-[#1c1c15] dark:text-[#e8e4dc] p-6 rounded-3xl border border-[#ded5c2] dark:border-[#242824] shadow-sm">
             <div className="text-center mb-5">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50 flex items-center justify-center text-2xl mx-auto mb-2.5 shadow-inner">
-                🌾
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50 flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+                <WheatIcon className="w-7 h-7 text-emerald-800 dark:text-emerald-300" />
               </div>
               <h2 className="text-xl font-black text-[#064d2c] dark:text-white">
-                {t.authModalTitle || "पशुचारा AI में प्रवेश"}
+                {t.authModalTitle || "पशुचारा में प्रवेश"}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {t.authModalSub || "अपनी सभी चारा रिपोर्ट व पशुधन डेटा सुरक्षित रखने हेतु साइन-इन करें"}
@@ -156,7 +169,9 @@ export default function LoginPage() {
             {step === "otp" && (
               <form onSubmit={handleVerifyOtp} className="space-y-4 pt-1">
                 <div className="text-center">
-                  <span className="text-2xl">🔐</span>
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 flex items-center justify-center mx-auto mb-1">
+                    <LockIcon className="w-5 h-5" />
+                  </div>
                   <h3 className="text-base font-black text-[#1c3328] dark:text-white mt-1">
                     {t.otpTitle || "OTP सत्यापन"}
                   </h3>
