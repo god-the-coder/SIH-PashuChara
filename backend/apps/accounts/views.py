@@ -8,7 +8,22 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import LoginSerializer, RegisterSerializer, UpdateUserSerializer, UserSerializer
+from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from .serializers import (
+    GoogleAuthSerializer,
+    LoginSerializer,
+    RegisterSerializer,
+    SendOTPSerializer,
+    UpdateUserSerializer,
+    UserSerializer,
+    VerifyOTPSerializer,
+)
+from .services import (
+    authenticate_or_create_google_user,
+    generate_phone_otp,
+    verify_phone_otp,
+)
 
 
 class RegisterView(APIView):
@@ -44,6 +59,81 @@ class LoginView(APIView):
         # different domain from the frontend (browsers never expose another
         # domain's cookies to document.cookie) — this header is the readable
         # equivalent, exposed cross-origin via CORS_EXPOSE_HEADERS.
+        response['X-CSRFToken'] = get_token(request)
+        return response
+
+
+class SendOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(tags=['accounts'], request=SendOTPSerializer)
+    def post(self, request):
+        serializer = SendOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone_number = serializer.validated_data['phone_number'].strip()
+
+        otp_record = generate_phone_otp(phone_number=phone_number)
+
+        data = {
+            'detail': 'OTP sent successfully.',
+            'phone_number': phone_number,
+        }
+        if settings.DEBUG:
+            data['dev_otp'] = otp_record.otp_code
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    @extend_schema(tags=['accounts'], request=VerifyOTPSerializer, responses=UserSerializer)
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone_number = serializer.validated_data['phone_number'].strip()
+        otp = serializer.validated_data['otp'].strip()
+        full_name = serializer.validated_data.get('full_name')
+
+        try:
+            user = verify_phone_otp(phone_number=phone_number, otp_code=otp, full_name=full_name)
+        except DjangoValidationError as err:
+            msg = err.messages[0] if hasattr(err, 'messages') else str(err)
+            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        login(request, user)
+        response = Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_200_OK)
+        response['X-CSRFToken'] = get_token(request)
+        return response
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    @extend_schema(tags=['accounts'], request=GoogleAuthSerializer, responses=UserSerializer)
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].strip()
+        google_id = serializer.validated_data.get('google_id', '').strip()
+        full_name = serializer.validated_data.get('full_name', '').strip()
+        avatar_url = serializer.validated_data.get('avatar_url', '')
+
+        try:
+            user = authenticate_or_create_google_user(
+                email=email,
+                google_id=google_id,
+                full_name=full_name,
+                avatar_url=avatar_url,
+            )
+        except DjangoValidationError as err:
+            msg = err.messages[0] if hasattr(err, 'messages') else str(err)
+            return Response({'detail': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        login(request, user)
+        response = Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_200_OK)
         response['X-CSRFToken'] = get_token(request)
         return response
 

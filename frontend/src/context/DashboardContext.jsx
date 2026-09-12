@@ -286,6 +286,40 @@ export function DashboardProvider({ children }) {
     }
   }, [showToast]);
 
+  const sendOtp = useCallback(async (phoneNumber) => {
+    try {
+      const resp = await authService.sendOtp({ phoneNumber });
+      showToast("ओटीपी भेज दिया गया है 📲");
+      return resp;
+    } catch (error) {
+      throw getApiError(error);
+    }
+  }, [showToast]);
+
+  const verifyOtp = useCallback(async (phoneNumber, otp, fullName = "") => {
+    try {
+      const apiUser = await authService.verifyOtp({ phoneNumber, otp, fullName });
+      const updated = userFromSession(apiUser);
+      setUser(updated);
+      showToast(`नमस्ते ${updated.name || "किसान जी"}! स्वागत है 🌾`);
+      return updated;
+    } catch (error) {
+      throw getApiError(error);
+    }
+  }, [showToast]);
+
+  const loginWithGoogle = useCallback(async ({ email, googleId, fullName, avatarUrl }) => {
+    try {
+      const apiUser = await authService.googleLogin({ email, googleId, fullName, avatarUrl });
+      const updated = userFromSession(apiUser);
+      setUser(updated);
+      showToast(`Google से स्वागत है ${updated.name || "किसान जी"}! 🌾`);
+      return updated;
+    } catch (error) {
+      throw getApiError(error);
+    }
+  }, [showToast]);
+
   const register = useCallback(async (phoneNumber, fullName, password) => {
     try {
       await authService.register({ phoneNumber, fullName, password });
@@ -402,6 +436,9 @@ export function DashboardProvider({ children }) {
     showToast,
     markAllRead,
     login,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
     register,
     logout,
     updateProfile,

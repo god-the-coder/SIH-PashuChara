@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import inspectionService from "../services/inspection/inspectionService";
@@ -177,25 +177,41 @@ export default function InspectionQuestionnairePage() {
     );
   };
 
-  // Auto-speak question on first load and on each step change after answer is filled
+  // Language tag mapping for speech recognition
+  const langTag = useMemo(() => {
+    const map = { hi: "hi-IN", en: "en-IN", mr: "mr-IN", ta: "ta-IN", gu: "gu-IN", kn: "kn-IN" };
+    return map[lang] || "hi-IN";
+  }, [lang]);
+
+  // Auto-speak question on step change, and as soon as screen reading finishes,
+  // automatically start microphone listening so farmer's speech is automatically fed.
   useEffect(() => {
     if (isLoadingQuestions || loadError || result || submitted) return;
 
     const rawText = isStaticStep
-      ? `${t.additionalInfoOptional || "अतिरिक्त जानकारी"}. ${t.storageDurationLabel || "भंडारण अवधि"}.`
+      ? `${t.additionalInfoOptional || "Additional Information"}. ${t.storageDurationLabel || "Storage Duration"}.`
       : (translateQuestion(currentQuestion?.question_translated || currentQuestion?.question, lang));
 
     if (rawText) {
       const timer = setTimeout(() => {
-        speak(rawText, lang);
+        speak(rawText, lang, () => {
+          // Trigger automatic audio capture after screen reading finishes
+          if (!isStaticStep) {
+            start(langTag);
+          }
+        });
       }, 350);
       return () => {
         clearTimeout(timer);
         stopTTS();
+        stop();
       };
     }
-    return () => stopTTS();
-  }, [step, isStaticStep, currentQuestion?.question, currentQuestion?.question_translated, lang, isLoadingQuestions, loadError, result, submitted, speak, stopTTS, t]);
+    return () => {
+      stopTTS();
+      stop();
+    };
+  }, [step, isStaticStep, currentQuestion?.question, currentQuestion?.question_translated, lang, langTag, isLoadingQuestions, loadError, result, submitted, speak, stopTTS, start, stop, t]);
 
   const handleNext = () => {
     if (!isStaticStep && !currentQuestion.answer.trim()) {
@@ -529,7 +545,7 @@ export default function InspectionQuestionnairePage() {
                     />
                     <button
                       type="button"
-                      onClick={() => (listening ? stop() : start("hi-IN"))}
+                      onClick={() => (listening ? stop() : start(langTag))}
                       className={`w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                         listening
                           ? "bg-red-600 text-white border-red-600 animate-pulse"
@@ -587,7 +603,7 @@ export default function InspectionQuestionnairePage() {
                     />
                     <button
                       type="button"
-                      onClick={() => (listening ? stop() : start("hi-IN"))}
+                      onClick={() => (listening ? stop() : start(langTag))}
                       className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                         listening
                           ? "bg-red-600 text-white border-red-600 animate-pulse"

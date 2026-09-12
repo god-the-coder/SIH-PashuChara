@@ -30,6 +30,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     # login, so they're all nullable/blank and filled in later from the
     # profile page.
     email = models.EmailField(blank=True)
+    google_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
     age = models.PositiveSmallIntegerField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=Gender.choices, blank=True)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
@@ -45,3 +46,20 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.phone_number
+
+
+class PhoneOTP(models.Model):
+    """Temporary 6-digit OTP verification for passwordless phone login."""
+
+    phone_number = models.CharField(max_length=16, validators=[phone_number_validator])
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.phone_number} -> {self.otp_code} (used={self.is_used})'
+

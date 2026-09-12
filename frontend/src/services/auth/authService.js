@@ -22,6 +22,29 @@ const authService = {
     })
   },
 
+  sendOtp({ phoneNumber }) {
+    return apiClient.post('/api/accounts/otp/send/', {
+      phone_number: phoneNumber,
+    })
+  },
+
+  verifyOtp({ phoneNumber, otp, fullName }) {
+    return apiClient.post('/api/accounts/otp/verify/', {
+      phone_number: phoneNumber,
+      otp,
+      full_name: fullName,
+    })
+  },
+
+  googleLogin({ email, googleId, fullName, avatarUrl }) {
+    return apiClient.post('/api/accounts/google/', {
+      email,
+      google_id: googleId,
+      full_name: fullName,
+      avatar_url: avatarUrl,
+    })
+  },
+
   logout() {
     return apiClient.post('/api/accounts/logout/')
   },

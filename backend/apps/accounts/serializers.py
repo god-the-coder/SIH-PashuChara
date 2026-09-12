@@ -39,3 +39,21 @@ class RegisterSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+class SendOTPSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=16)
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(max_length=16)
+    otp = serializers.CharField(max_length=6)
+    full_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    google_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    full_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    avatar_url = serializers.CharField(required=False, allow_blank=True)
+

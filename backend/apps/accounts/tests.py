@@ -1,8 +1,8 @@
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from .models import User
+from .models import PhoneOTP, User
 from .permissions import IsSelf
 from .selectors import get_user_by_id, get_user_by_phone_number
 from .services import register_user
@@ -119,3 +119,57 @@ class AccountsApiTests(TestCase):
 
         response = self.client.post('/api/accounts/register/', payload, format='json')
         self.assertEqual(response.status_code, 400)
+
+    @override_settings(DEBUG=True)
+    def test_send_and_verify_otp_flow(self):
+        # 1. Send OTP
+        phone = '+919999911111'
+        res = self.client.post('/api/accounts/otp/send/', {'phone_number': phone}, format='json')
+        self.assertEqual(res.status_code, 200)
+        otp = res.data.get('dev_otp')
+        self.assertTrue(otp)
+        self.assertEqual(len(otp), 6)
+
+        # 2. Verify with wrong OTP
+        res_fail = self.client.post('/api/accounts/otp/verify/', {
+            'phone_number': phone,
+            'otp': '000000',
+        }, format='json')
+        self.assertEqual(res_fail.status_code, 400)
+
+        # 3. Verify with valid OTP and auto-register
+        res_ok = self.client.post('/api/accounts/otp/verify/', {
+            'phone_number': phone,
+            'otp': otp,
+            'full_name': 'OTP Farmer',
+        }, format='json')
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.data['phone_number'], phone)
+        self.assertEqual(res_ok.data['full_name'], 'OTP Farmer')
+        self.assertIn('X-CSRFToken', res_ok)
+
+        # 4. Check authenticated session
+        me_res = self.client.get('/api/accounts/me/')
+        self.assertEqual(me_res.status_code, 200)
+        self.assertEqual(me_res.data['phone_number'], phone)
+
+    def test_google_login_flow(self):
+        email = 'farmer@gmail.com'
+        google_id = 'gid_123456789'
+        res = self.client.post('/api/accounts/google/', {
+            'email': email,
+            'google_id': google_id,
+            'full_name': 'Google Farmer',
+        }, format='json')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['email'], email)
+        self.assertEqual(res.data['full_name'], 'Google Farmer')
+        self.assertIn('X-CSRFToken', res)
+
+        # Subsequent sign-in with same google_id retrieves user
+        res2 = self.client.post('/api/accounts/google/', {
+            'email': email,
+            'google_id': google_id,
+        }, format='json')
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.data['id'], res.data['id'])

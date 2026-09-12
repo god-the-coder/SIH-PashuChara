@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
@@ -70,7 +70,7 @@ function useVoice(onResult) {
 
   const start = (lang) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Voice Input not supported in this browser."); return; }
+    if (!SR) { return; }
     const r = new SR();
     r.lang = lang || "hi-IN";
     r.continuous = false;
@@ -102,6 +102,11 @@ export default function AiQuestionnairePage() {
   const currentQ = questions[step];
   const isLast   = step === questions.length - 1;
 
+  const langTag = useMemo(() => {
+    const map = { hi: "hi-IN", en: "en-IN", mr: "mr-IN", ta: "ta-IN", gu: "gu-IN", kn: "kn-IN" };
+    return map[lang] || "hi-IN";
+  }, [lang]);
+
   const { listening, start, stop } = useVoice((text) => {
     if (currentQ.type === "text") {
       setTextDraft((prev) => prev ? prev + " " + text : text);
@@ -118,15 +123,22 @@ export default function AiQuestionnairePage() {
     setTextDraft("");
     if (currentQ?.question) {
       const timer = setTimeout(() => {
-        speak(currentQ.question, lang);
+        speak(currentQ.question, lang, () => {
+          // Open audio automatically after screen reading ends
+          start(langTag);
+        });
       }, 350);
       return () => {
         clearTimeout(timer);
         stopTTS();
+        stop();
       };
     }
-    return () => stopTTS();
-  }, [step, currentQ?.question, lang, speak, stopTTS]);
+    return () => {
+      stopTTS();
+      stop();
+    };
+  }, [step, currentQ?.question, lang, langTag, speak, stopTTS, start, stop]);
 
   const handleNext = () => {
     stopTTS();
@@ -243,7 +255,7 @@ export default function AiQuestionnairePage() {
                 })}
                 <button
                   type="button"
-                  onClick={() => listening ? stop() : start("hi-IN")}
+                  onClick={() => listening ? stop() : start(langTag)}
                   className={"w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer " + (listening ? "bg-red-600 text-white border-red-600 animate-pulse" : "bg-[#faf7f0] dark:bg-[#0f1110] text-gray-500 dark:text-gray-400 border-[#ded5c2] dark:border-[#242824]")}
                 >
                   {listening ? <MicOffIcon className="w-3.5 h-3.5" /> : <MicIcon className="w-3.5 h-3.5" />}
@@ -263,7 +275,7 @@ export default function AiQuestionnairePage() {
                 />
                 <button
                   type="button"
-                  onClick={() => listening ? stop() : start("hi-IN")}
+                  onClick={() => listening ? stop() : start(langTag)}
                   className={"w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer " + (listening ? "bg-red-600 text-white border-red-600 animate-pulse" : "bg-emerald-50 dark:bg-[#0f1a12] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50")}
                 >
                   {listening ? <MicOffIcon className="w-4 h-4" /> : <MicIcon className="w-4 h-4" />}

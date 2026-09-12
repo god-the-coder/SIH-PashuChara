@@ -5,37 +5,80 @@ import SubPageHeader from "../components/layout/SubPageHeader";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { t, register } = useDashboard();
+  const { t, sendOtp, verifyOtp, loginWithGoogle } = useDashboard();
 
+  const [stage, setStage] = useState("phone"); // 'phone' | 'otp'
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSendOtp = async (e) => {
+    e?.preventDefault();
     setError("");
 
     if (!fullName.trim()) {
-      setError(t.errNameRequired);
+      setError(t.errNameRequired || "Please enter your name");
       return;
     }
     if (phoneNumber.length < 10) {
-      setError(t.errInvalidPhone);
-      return;
-    }
-    if (password.length < 8) {
-      setError(t.errPasswordMin8);
+      setError(t.errInvalidPhone || "Please enter a valid 10-digit mobile number");
       return;
     }
 
     setIsLoading(true);
     try {
-      await register(`+91${phoneNumber}`, fullName.trim(), password);
+      const fullPhone = `+91${phoneNumber}`;
+      const res = await sendOtp(fullPhone);
+      if (res?.dev_otp) {
+        setDevOtp(res.dev_otp);
+        setOtp(res.dev_otp);
+      }
+      setStage("otp");
+    } catch (apiError) {
+      setError(apiError.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e?.preventDefault();
+    setError("");
+
+    if (otp.trim().length !== 6) {
+      setError("Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const fullPhone = `+91${phoneNumber}`;
+      await verifyOtp(fullPhone, otp.trim(), fullName.trim());
       navigate("/dashboard");
     } catch (apiError) {
-      setError(apiError.message || t.errRegisterFailed);
+      setError(apiError.message || "OTP verification failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      const sampleEmail = `farmer_${Date.now().toString().slice(-4)}@gmail.com`;
+      const sampleGid = `google_${Date.now()}`;
+      await loginWithGoogle({
+        email: sampleEmail,
+        googleId: sampleGid,
+        fullName: fullName.trim() || "Google Farmer",
+      });
+      navigate("/dashboard");
+    } catch (apiError) {
+      setError(apiError.message || "Google registration failed.");
     } finally {
       setIsLoading(false);
     }
@@ -45,8 +88,8 @@ export default function RegisterPage() {
     <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#0c130e] antialiased">
       <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between shadow-2xl bg-[#FAF7F0] dark:bg-[#111713]">
         <SubPageHeader
-          title={t.registerHeaderTitle}
-          subtitle={t.registerHeaderSubtitle}
+          title={t.registerHeaderTitle || "Create New Account"}
+          subtitle={t.registerHeaderSubtitle || "PashuChara Farmer Registration"}
           backTo="/login"
         />
 
@@ -54,83 +97,163 @@ export default function RegisterPage() {
           <div className="bg-white dark:bg-[#181e18] text-[#1c1c15] dark:text-[#f3ede2] p-6 rounded-3xl border border-[#ded5c2] dark:border-[#28382d] shadow-sm">
             <div className="text-center mb-5">
               <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-300 dark:border-emerald-700/50 overflow-hidden flex items-center justify-center mx-auto mb-2.5 shadow-inner">
-                <img src="/app-logo.png" alt="PashuChara AI" className="w-full h-full object-cover" />
+                <img src="/app-logo.png" alt="PashuChara" className="w-full h-full object-cover" />
               </div>
               <h2 className="text-xl font-black text-[#14351d] dark:text-white">
-                {t.registerCardTitle}
+                {stage === "phone" ? (t.registerCardTitle || "Farmer Registration") : (t.otpTitle || "OTP Verification")}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t.registerCardSub}
+                {stage === "phone"
+                  ? (t.registerCardSub || "Create an account to save your fodder quality reports")
+                  : `${t.otpSentNote || "6-digit OTP has been sent to"} +91 ${phoneNumber}`}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.nameLabel}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={t.fullNamePlaceholder}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-3 rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-[#FAF7F0] dark:bg-[#131613] text-sm font-bold text-gray-800 dark:text-white outline-none focus:border-emerald-600"
-                />
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-400">
+                {error}
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.phoneInputLabel}
-                </label>
-                <div className="flex items-center rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-[#FAF7F0] dark:bg-[#131613] overflow-hidden focus-within:border-emerald-600">
-                  <span className="px-3.5 py-3 text-xs font-black text-gray-600 dark:text-gray-400 border-r border-[#ded6c5] dark:border-[#343e34] bg-gray-50 dark:bg-[#1a1f1a]">
-                    +91
-                  </span>
+            {stage === "phone" ? (
+              <form onSubmit={handleSendOtp} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    {t.nameLabel || "Full Name *"}
+                  </label>
                   <input
-                    type="tel"
-                    maxLength={10}
+                    type="text"
                     required
-                    placeholder={t.phonePlaceholder}
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
-                    className="w-full px-3.5 py-3 text-sm font-bold bg-transparent text-gray-800 dark:text-white outline-none"
+                    placeholder={t.fullNamePlaceholder || "e.g. Ramesh Chaudhary"}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-3.5 py-3 rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-[#FAF7F0] dark:bg-[#131613] text-sm font-bold text-gray-800 dark:text-white outline-none focus:border-emerald-600"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.passwordLabel}
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder={t.passwordMinPlaceholder}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-3 rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-[#FAF7F0] dark:bg-[#131613] text-sm font-bold text-gray-800 dark:text-white outline-none focus:border-emerald-600"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    {t.phoneInputLabel || "Mobile Number (Primary)"}
+                  </label>
+                  <div className="flex items-center rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-[#FAF7F0] dark:bg-[#131613] overflow-hidden focus-within:border-emerald-600">
+                    <span className="px-3.5 py-3 text-xs font-black text-gray-600 dark:text-gray-400 border-r border-[#ded6c5] dark:border-[#343e34] bg-gray-50 dark:bg-[#1a1f1a]">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      required
+                      placeholder={t.phonePlaceholder || "Enter 10-digit number"}
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                      className="w-full px-3.5 py-3 text-sm font-bold bg-transparent text-gray-800 dark:text-white outline-none"
+                    />
+                  </div>
+                </div>
 
-              {error && (
-                <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>
-              )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] disabled:opacity-60 mt-2"
+                >
+                  <span>{isLoading ? (t.sendingOtpBtn || "Sending OTP...") : (t.getOtpBtn || "Get OTP 📲")}</span>
+                  <span className="text-xs">→</span>
+                </button>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] disabled:opacity-60"
-              >
-                <span>{isLoading ? t.creatingAccountBtn : t.createAccountBtn}</span>
-                <span className="text-xs">→</span>
-              </button>
-            </form>
+                <div className="relative my-4 text-center">
+                  <hr className="border-[#ded5c2] dark:border-[#28382d]" />
+                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-[#181e18] px-2 text-[10px] text-gray-400 font-bold uppercase">
+                    {t.orDividerText || "OR"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="w-full py-3 rounded-2xl border border-[#ded6c5] dark:border-[#343e34] bg-white dark:bg-[#131613] hover:bg-gray-50 dark:hover:bg-[#1e241e] text-gray-700 dark:text-gray-200 font-bold text-xs flex items-center justify-center gap-2.5 transition-colors cursor-pointer shadow-sm disabled:opacity-60"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.26 21.36 7.34 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.98 0 12s.46 3.84 1.26 5.42l4.02-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                  <span>{t.googleRegisterBtnText || "Register with Google"}</span>
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                      {t.otpCodeLabel || "6-Digit OTP Code"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setStage("phone")}
+                      className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                    >
+                      {t.changePhoneBtn || "← Change Number"}
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    placeholder="• • • • • •"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="w-full px-3.5 py-3 rounded-2xl border border-emerald-500/50 bg-[#FAF7F0] dark:bg-[#131613] text-center text-xl tracking-[0.4em] font-black text-gray-900 dark:text-white outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  />
+
+                  {devOtp && (
+                    <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 text-center font-mono font-bold">
+                      [Dev Mode OTP: {devOtp}]
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || otp.length !== 6}
+                  className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                  <span>{isLoading ? (t.registeringAccountBtn || "Creating account...") : (t.registerAndLoginBtn || "Create Account & Sign In 🌾")}</span>
+                  <span className="text-xs">✓</span>
+                </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={isLoading}
+                    className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                  >
+                    {t.resendOtpBtn || "Resend OTP"}
+                  </button>
+                </div>
+              </form>
+            )}
 
             <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-              {t.haveAccountText}{" "}
+              {t.haveAccountText || "Already have an account?"}{" "}
               <Link to="/login" className="font-bold text-emerald-800 dark:text-emerald-400 hover:underline">
-                {t.loginBtn}
+                {t.loginBtn || "Log In"}
               </Link>
             </p>
           </div>

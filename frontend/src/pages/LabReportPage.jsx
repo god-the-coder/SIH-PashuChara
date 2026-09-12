@@ -77,7 +77,7 @@ export default function LabReportPage() {
     const text = `${L("Diagnostic Screening Report", "डायग्नोस्टिक स्क्रीनिंग रिपोर्ट")} – #${id}: ${result.headline || labelize(result.risk_category)}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: L("PashuChara AI Analytic Report", "पशुचारा AI विश्लेषणात्मक रिपोर्ट"), text, url: reportURL });
+        await navigator.share({ title: L("PashuChara Analytic Report", "पशुचारा विश्लेषणात्मक रिपोर्ट"), text, url: reportURL });
       } catch {
         // User cancelled the native share sheet — nothing to do.
       }
@@ -195,7 +195,7 @@ export default function LabReportPage() {
                     {L("AI VISUAL DIAGNOSTIC SCREENING REPORT", "AI विज़ुअल डायग्नोस्टिक स्क्रीनिंग रिपोर्ट")}
                   </p>
                   <h1 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white mt-0.5">
-                    {L("PashuChara AI Analytic Report", "पशुचारा AI विश्लेषणात्मक रिपोर्ट")}
+                    {L("PashuChara Analytic Report", "पशुचारा विश्लेषणात्मक रिपोर्ट")}
                   </h1>
                   <p className="text-[9px] text-slate-600 dark:text-slate-400">
                     {L("Fodder & Silage Quality Diagnostic Assessment System", "चारा व साइलेज गुणवत्ता परीक्षण एवं विश्लेषण प्रणाली")}
@@ -553,7 +553,7 @@ export default function LabReportPage() {
                   {L("AI-Generated Assessment", "AI-जनित मूल्यांकन")}
                 </p>
                 <p className="font-bold text-slate-900 dark:text-white">
-                  {L("PashuChara AI Visual Assessment Report", "पशुचारा AI विज़ुअल मूल्यांकन रिपोर्ट")}
+                  {L("PashuChara Visual Assessment Report", "पशुचारा विज़ुअल मूल्यांकन रिपोर्ट")}
                 </p>
                 <p className="text-[7px] text-slate-500 dark:text-slate-400 leading-tight">
                   {L(
