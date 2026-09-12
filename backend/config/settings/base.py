@@ -172,9 +172,9 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# Groq AI (visual inspection analysis — vision-capable chat completions)
-GROQ_KEY = os.getenv('GROQ_KEY', '')
-GROQ_MODEL = os.getenv('GROQ_MODEL', 'qwen/qwen3.6-27b')
+# Gemini AI (visual inspection analysis — vision-capable multimodal generation)
+GEMINI_KEY = os.getenv('GEMINI_KEY', '')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.8-flash')
 
 # OpenWeatherMap (inspection environmental context)
 OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')

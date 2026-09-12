@@ -7,11 +7,17 @@ from .exceptions import AIServiceError
 from .risk_engine import classify_risk, default_recommendations_for_category
 
 
-@override_settings(GROQ_KEY='test-key', GROQ_MODEL='test-model')
+@override_settings(GEMINI_KEY='test-key', GEMINI_MODEL='test-model')
 class GenerateJsonTests(SimpleTestCase):
     def _mock_post(self, text, status_code=200):
         mock_response = MagicMock(status_code=status_code, ok=status_code < 400)
-        mock_response.json.return_value = {'choices': [{'message': {'content': text}}]}
+        mock_response.json.return_value = {
+            'candidates': [{
+                'content': {
+                    'parts': [{'text': text}],
+                },
+            }],
+        }
         return mock_response
 
     def _mock_error_post(self, status_code, message):
@@ -20,9 +26,9 @@ class GenerateJsonTests(SimpleTestCase):
         return mock_response
 
     def test_raises_without_api_key(self):
-        with override_settings(GROQ_KEY=''):
+        with override_settings(GEMINI_KEY=''):
             with self.assertRaises(AIServiceError):
-                ai_client._generate_json(prompt='p', images=[], max_tokens=10, expect_object=False)
+                ai_client._generate_json(prompt='p', images=[])
 
     @patch('ai.client.requests.post')
     def test_generate_followup_questions_parses_list(self, mock_post):
@@ -76,7 +82,7 @@ class GenerateJsonTests(SimpleTestCase):
     @patch('ai.client.requests.post')
     def test_generate_followup_questions_ignores_trailing_chatter(self, mock_post):
         mock_post.return_value = self._mock_post(
-            '["Any smell?", "Any mold?"]\n\nLet me know if you need anything else!',
+            '["Any smell?", "Any mold?"]\n\nHope this helps!',
         )
         questions = ai_client.generate_followup_questions(
             inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
@@ -102,39 +108,6 @@ class GenerateJsonTests(SimpleTestCase):
                 inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
                 storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
             )
-
-    @patch('ai.client.requests.post')
-    def test_http_error_surfaces_groq_error_message(self, mock_post):
-        mock_post.return_value = self._mock_error_post(
-            400, 'Too many images provided.  This model supports up to 3 images',
-        )
-        with self.assertRaisesMessage(AIServiceError, 'Too many images'):
-            ai_client.generate_followup_questions(
-                inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
-                storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
-            )
-
-
-class CapImagesTests(SimpleTestCase):
-    def test_caps_plain_list_at_three(self):
-        images = [(b'a', 'image/jpeg'), (b'b', 'image/jpeg'), (b'c', 'image/jpeg'), (b'd', 'image/jpeg')]
-        capped, primary_count = ai_client._cap_images(images)
-        self.assertEqual(capped, images[:3])
-        self.assertIsNone(primary_count)
-
-    def test_keeps_primaries_before_supplementary(self):
-        primary = [(b'p1', 'image/jpeg'), (b'p2', 'image/jpeg'), (b'p3', 'image/jpeg'), (b'p4', 'image/jpeg')]
-        supplementary = [(b's1', 'image/jpeg'), (b's2', 'image/jpeg')]
-        capped, primary_count = ai_client._cap_images(primary + supplementary, primary_count=len(primary))
-        self.assertEqual(capped, primary[:3])
-        self.assertEqual(primary_count, 3)
-
-    def test_fills_remaining_slots_with_supplementary(self):
-        primary = [(b'p1', 'image/jpeg')]
-        supplementary = [(b's1', 'image/jpeg'), (b's2', 'image/jpeg'), (b's3', 'image/jpeg')]
-        capped, primary_count = ai_client._cap_images(primary + supplementary, primary_count=len(primary))
-        self.assertEqual(capped, primary + supplementary[:2])
-        self.assertEqual(primary_count, 1)
 
 
 class ClassifyRiskTests(SimpleTestCase):
