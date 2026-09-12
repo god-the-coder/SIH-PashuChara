@@ -322,6 +322,17 @@ export default function NewInspectionPage() {
 
   const allCaptured = capturedImages.every((img) => img !== null);
   const step = steps[currentStep];
+  const currentStepDone = Boolean(capturedImages[currentStep]);
+
+  const handleNextOrProceed = () => {
+    if (allCaptured) {
+      handleProceedToQuestions();
+      return;
+    }
+    let next = capturedImages.findIndex((img, idx) => idx > currentStep && !img);
+    if (next === -1) next = capturedImages.findIndex((img) => !img);
+    if (next !== -1) setCurrentStep(next);
+  };
 
   if (isCreating || createError) {
     return (
@@ -409,15 +420,23 @@ export default function NewInspectionPage() {
             })}
           </div>
 
-          {/* AI guidance */}
+          {/* AI guidance — the single source of per-step capture instructions and
+              live AI feedback; changes with `step`/currentStep for every photo type. */}
           {isVoiceActive && (
             <div className="p-3 rounded-2xl bg-white dark:bg-[#141914] border border-[#e5e0d8] dark:border-[#252825] flex items-start gap-2.5 shadow-sm">
               <IcoAI />
               <div>
                 <p className="text-[11px] font-extrabold text-[#059652] dark:text-emerald-400 uppercase tracking-wide">
-                  {t.aiGuidanceLabel || "लाइव सहायक सुझाव:"}
+                  {t.aiGuidanceLabel || "लाइव सहायक सुझाव:"} <span className="text-amber-600 dark:text-amber-400 normal-case font-bold">{step.englishTitle}</span>
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                <p className="text-xs text-gray-700 dark:text-gray-200 mt-0.5 leading-relaxed font-semibold">
+                  {step.description}
+                </p>
+                <div className="flex items-start gap-1.5 mt-1">
+                  <IcoTip />
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">{step.hint}</p>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1.5 leading-relaxed">
                   {checkingStep === currentStep
                     ? (t.aiCheckingPhoto || "AI फोटो की जांच कर रहा है...")
                     : captureFeedback[currentStep]?.feedback || voiceGuidanceMessages[currentStep]}
@@ -438,25 +457,12 @@ export default function NewInspectionPage() {
             )}
             {isFlashing && <div className="absolute inset-0 z-20 bg-white animate-pulse" />}
 
-            <div className="relative z-10 m-3 p-3 rounded-xl bg-black/60 backdrop-blur-sm text-white">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-black">{step.title}</span>
-                <div className="flex items-center gap-2">
-                  {!capturedImages[currentStep] && cameraStatus === "ready" && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-black text-emerald-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      LIVE
-                    </span>
-                  )}
-                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">{step.englishTitle}</span>
-                </div>
-              </div>
-              <p className="text-[11px] text-gray-200 leading-snug">{step.description}</p>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <IcoTip />
-                <p className="text-[11px] text-amber-200 font-semibold">{step.hint}</p>
-              </div>
-            </div>
+            {!capturedImages[currentStep] && cameraStatus === "ready" && (
+              <span className="absolute top-3 left-3 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm border border-emerald-500/40 text-[9px] font-black text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE
+              </span>
+            )}
 
             {!capturedImages[currentStep] && cameraStatus === "ready" && (
               <button
@@ -567,14 +573,14 @@ export default function NewInspectionPage() {
               />
             </div>
             <button
-              onClick={handleProceedToQuestions}
-              disabled={!capturedImages[0]}
+              onClick={handleNextOrProceed}
+              disabled={!currentStepDone}
               className={`w-full py-3.5 rounded-2xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                capturedImages[0] ? "text-white hover:brightness-110" : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+                currentStepDone ? "text-white hover:brightness-110" : "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
               }`}
-              style={capturedImages[0] ? { background: "linear-gradient(135deg, #059652, #10b96a)" } : {}}
+              style={currentStepDone ? { background: "linear-gradient(135deg, #059652, #10b96a)" } : {}}
             >
-              <span>{allCaptured ? (t.proceedToQuestionsBtn || "सवालों के जवाब दें") : (t.proceedToQuestionsBtn || "आगे के सवालों पर चलें")}</span>
+              <span>{allCaptured ? (t.proceedToQuestionsBtn || "सवालों के जवाब दें") : (t.nextPhotoBtn || "अगली फोटो लें")}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
