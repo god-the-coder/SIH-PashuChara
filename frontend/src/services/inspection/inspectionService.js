@@ -79,7 +79,7 @@ const inspectionService = {
   },
 
   analyze(inspectionId) {
-    return apiClient.post(`/api/inspections/${inspectionId}/analyze/`);
+    return apiClient.post(`/api/inspections/${inspectionId}/analyze/`, {}, { timeout: 60_000 });
   },
 
   save(inspectionId) {
