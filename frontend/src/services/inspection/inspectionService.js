@@ -46,12 +46,13 @@ const inspectionService = {
     return apiClient.post(`/api/inspections/${inspectionId}/questions/answer/`, { answers });
   },
 
-  updateContext(inspectionId, { latitude, longitude, storageCondition, moistureExposure, farmerObservation }) {
+  updateContext(inspectionId, { latitude, longitude, storageDurationDays, storageCondition, moistureExposure, farmerObservation }) {
     const payload = {};
     if (latitude != null && longitude != null) {
       payload.latitude = latitude;
       payload.longitude = longitude;
     }
+    if (storageDurationDays !== undefined) payload.storage_duration_days = storageDurationDays;
     if (storageCondition !== undefined) payload.storage_condition = storageCondition;
     if (moistureExposure !== undefined) payload.moisture_exposure = moistureExposure;
     if (farmerObservation !== undefined) payload.farmer_observation = farmerObservation;

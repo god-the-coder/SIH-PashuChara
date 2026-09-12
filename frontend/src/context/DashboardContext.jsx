@@ -352,10 +352,6 @@ export function DashboardProvider({ children }) {
     ? (t.drawerGuestAccount || "अतिथि किसान")
     : (isDefaultRamesh ? (t.navFarmerName || "रमेश चौधरी") : user.name);
 
-  const displayRole = user?.isLoggedIn
-    ? (t.navFarmRole || user?.role || "डेयरी किसान")
-    : (t.drawerLoginLabel || "लॉगिन करें");
-
   const honorific = lang === "en" ? "ji" : lang === "gu" ? "ભાઈ" : lang === "ta" ? "அவர்களே" : "जी";
 
   const greetingName = !user?.isLoggedIn
@@ -382,7 +378,6 @@ export function DashboardProvider({ children }) {
     farm,
     setFarm,
     displayName,
-    displayRole,
     displayLocation,
     greetingName,
     authModalOpen,

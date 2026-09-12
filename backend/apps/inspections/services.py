@@ -91,13 +91,17 @@ def save_inspection(*, inspection):
 
 
 def update_inspection_context(
-    *, inspection, latitude=None, longitude=None, storage_condition=None,
+    *, inspection, latitude=None, longitude=None, storage_duration_days=None, storage_condition=None,
     moisture_exposure=None, farmer_observation=None,
 ):
     if inspection.status != InspectionStatus.DRAFT:
         raise ValidationError('Inspection context can only be updated while in draft.')
 
     update_fields = []
+
+    if storage_duration_days is not None:
+        inspection.storage_duration_days = storage_duration_days
+        update_fields.append('storage_duration_days')
 
     if latitude is not None and longitude is not None:
         inspection.latitude = latitude

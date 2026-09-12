@@ -77,22 +77,8 @@ export default function NewInspectionPage() {
   const batchId = searchParams.get("batchId");
   const { t, showToast } = useDashboard();
 
-  const MATERIAL_TYPES = [
-    { value: "GREEN_FODDER", label: t.matLabelGreenFodder },
-    { value: "DRY_FODDER", label: t.matLabelDryFodder },
-    { value: "SILAGE", label: t.matLabelSilage },
-    { value: "CONCENTRATE_FEED", label: t.matLabelConcentrateFeed },
-    { value: "OTHER", label: t.matLabelOther },
-  ];
-
   const [inspectionId, setInspectionId] = useState(null);
-  const [basicInfo, setBasicInfo] = useState({
-    inspectionType: fodderType === "feed" ? "FEED" : "SILAGE",
-    materialType: fodderType === "feed" ? "CONCENTRATE_FEED" : "SILAGE",
-    materialTypeOther: "",
-    storageDurationDays: "1",
-  });
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(true);
   const [createError, setCreateError] = useState("");
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -107,6 +93,35 @@ export default function NewInspectionPage() {
   const streamRef = useRef(null);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const hasCreatedInspection = useRef(false);
+
+  // Material type is fully determined by which homepage button the farmer
+  // tapped (Silage vs Feed) — no separate question for it. Storage duration
+  // is asked later as one of the static questions, so a provisional value is
+  // sent here and corrected via updateContext before analysis.
+  useEffect(() => {
+    if (hasCreatedInspection.current) return;
+    hasCreatedInspection.current = true;
+
+    inspectionService
+      .create({
+        inspectionType: fodderType === "feed" ? "FEED" : "SILAGE",
+        materialType: fodderType === "feed" ? "CONCENTRATE_FEED" : "SILAGE",
+        storageDurationDays: 1,
+        batchId: batchId ? Number(batchId) : undefined,
+      })
+      .then((inspection) => {
+        setInspectionId(inspection.id);
+        sessionStorage.setItem("pashuchaara_inspection_id", String(inspection.id));
+      })
+      .catch((apiError) => {
+        setCreateError(apiError.message || t.errInspectionCreateFailed);
+      })
+      .finally(() => {
+        setIsCreating(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const steps = [
     {
@@ -144,33 +159,6 @@ export default function NewInspectionPage() {
   ];
 
   const voiceGuidanceMessages = [t.voiceStep1, t.voiceStep2, t.voiceStep3, t.voiceStep4];
-
-  const handleCreateInspection = async (e) => {
-    e.preventDefault();
-    setCreateError("");
-
-    if (basicInfo.materialType === "OTHER" && !basicInfo.materialTypeOther.trim()) {
-      setCreateError(t.errMaterialTypeOther);
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const inspection = await inspectionService.create({
-        inspectionType: basicInfo.inspectionType,
-        materialType: basicInfo.materialType,
-        materialTypeOther: basicInfo.materialTypeOther,
-        storageDurationDays: Number(basicInfo.storageDurationDays) || 0,
-        batchId: batchId ? Number(batchId) : undefined,
-      });
-      setInspectionId(inspection.id);
-      sessionStorage.setItem("pashuchaara_inspection_id", String(inspection.id));
-    } catch (apiError) {
-      setCreateError(apiError.message || t.errInspectionCreateFailed);
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   const uploadStepImage = async (file) => {
     setUploadingStep(currentStep);
@@ -312,97 +300,29 @@ export default function NewInspectionPage() {
   const allCaptured = capturedImages.every((img) => img !== null);
   const step = steps[currentStep];
 
-  if (!inspectionId) {
+  if (isCreating || createError) {
     return (
       <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#121512] antialiased">
-        <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between p-4 shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
+        <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col p-4 shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
           <SubPageHeader
-            title={t.basicInfoTitle}
-            subtitle={t.basicInfoStepIndicator}
+            title={fodderType === "silage" ? (t.inspectSilageTitle || "साइलेज दृश्य जाँच") : (t.inspectFeedTitle || "पशु आहार दृश्य जाँच")}
             backTo="/dashboard"
           />
-
-          <form onSubmit={handleCreateInspection} className="my-3 space-y-3 flex-1">
-            {batchId && (
-              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-[#1a3324] border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                {t.reinspectBatchNotice.replace("{id}", batchId)}
-              </div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
+            {createError ? (
+              <>
+                <p className="text-xs font-bold text-red-600 dark:text-red-400">{createError}</p>
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="px-4 py-2 rounded-xl bg-[#2D5A3D] text-white text-xs font-bold cursor-pointer"
+                >
+                  {t.backToDashboardBtn || "डैशबोर्ड पर वापस जाएँ"}
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.startingBtn || "शुरू हो रहा है..."}</p>
             )}
-            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
-              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
-                {t.inspectionTypeLabel}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: "SILAGE", label: t.typeSilage },
-                  { value: "FEED", label: t.typeFeed },
-                ].map((opt) => (
-                  <button
-                    type="button"
-                    key={opt.value}
-                    onClick={() => setBasicInfo({ ...basicInfo, inspectionType: opt.value })}
-                    className={`py-2 px-2 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      basicInfo.inspectionType === opt.value
-                        ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
-                        : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
-              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
-                {t.materialTypeLabel}
-              </label>
-              <select
-                value={basicInfo.materialType}
-                onChange={(e) => setBasicInfo({ ...basicInfo, materialType: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
-              >
-                {MATERIAL_TYPES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              {basicInfo.materialType === "OTHER" && (
-                <input
-                  type="text"
-                  placeholder={t.materialTypeOtherPlaceholder}
-                  value={basicInfo.materialTypeOther}
-                  onChange={(e) => setBasicInfo({ ...basicInfo, materialTypeOther: e.target.value })}
-                  className="w-full mt-2 px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
-                />
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
-              <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
-                {t.storageDurationLabel}
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={basicInfo.storageDurationDays}
-                onChange={(e) => setBasicInfo({ ...basicInfo, storageDurationDays: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-white dark:bg-[#121914] text-gray-800 dark:text-white outline-none"
-              />
-            </div>
-
-            {createError && (
-              <p className="text-xs font-bold text-red-600 dark:text-red-400">{createError}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] disabled:opacity-60"
-            >
-              <span>{isCreating ? t.startingBtn : t.proceedToPhotoBtn}</span>
-              <span className="text-sm">→</span>
-            </button>
-          </form>
+          </div>
         </div>
       </div>
     );
@@ -433,6 +353,12 @@ export default function NewInspectionPage() {
         />
 
         <main className="flex-1 flex flex-col gap-3 px-4 pt-3 pb-4 overflow-y-auto">
+          {batchId && (
+            <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-[#1a3324] border border-emerald-300 dark:border-emerald-700/50 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              {t.reinspectBatchNotice.replace("{id}", batchId)}
+            </div>
+          )}
+
           {/* Step tab bar */}
           <div className="grid grid-cols-4 gap-1.5">
             {steps.map((s, idx) => {

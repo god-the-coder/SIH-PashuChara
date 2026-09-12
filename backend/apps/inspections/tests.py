@@ -534,6 +534,10 @@ class UpdateInspectionContextServiceTests(TestCase):
         with self.assertRaises(ValidationError):
             update_inspection_context(inspection=self.inspection, farmer_observation='too late')
 
+    def test_updates_storage_duration_days(self):
+        update_inspection_context(inspection=self.inspection, storage_duration_days=5)
+        self.assertEqual(self.inspection.storage_duration_days, 5)
+
 
 class AIEndpointApiTests(TestCase):
     def setUp(self):
@@ -600,3 +604,10 @@ class AIEndpointApiTests(TestCase):
             f'/api/inspections/{self.inspection_id}/context/', {'latitude': 19.9975}, format='json',
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_context_endpoint_updates_storage_duration_days(self):
+        response = self.client.patch(
+            f'/api/inspections/{self.inspection_id}/context/', {'storage_duration_days': 7}, format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['storage_duration_days'], 7)

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { GlobeIcon, BellIcon, CheckIcon } from "../common/Icons";
 
 export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
-  const { t, lang, changeLang, notifRead, user, displayName, displayRole } = useDashboard();
+  const { t, lang, changeLang, notifRead, user, displayName } = useDashboard();
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const langRef = useRef(null);
 
@@ -46,9 +46,6 @@ export default function AppHeader({ onOpenDrawer, onOpenNotif }) {
         <div className="flex flex-col justify-center">
           <span className="text-sm font-black text-[#064d2c] dark:text-white leading-tight">
             {displayName}
-          </span>
-          <span className="text-[11px] font-semibold text-[#4a6b54] dark:text-[#a8cfb4] leading-tight mt-0.5">
-            {displayRole}
           </span>
         </div>
       </button>

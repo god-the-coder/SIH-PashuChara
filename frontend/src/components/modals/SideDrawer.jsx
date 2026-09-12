@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../../context/DashboardContext";
-import { UserIcon, BarnIcon, SettingsIcon, PhoneIcon, CloseIcon, SunIcon, MoonIcon } from "../common/Icons";
+import { UserIcon, SettingsIcon, PhoneIcon, CloseIcon, SunIcon, MoonIcon } from "../common/Icons";
 
 export default function SideDrawer({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -10,8 +10,6 @@ export default function SideDrawer({ isOpen, onClose }) {
     onClose();
     if (action === "personalInfo") {
       navigate("/profile");
-    } else if (action === "farm") {
-      navigate("/farm");
     } else if (action === "settings") {
       navigate("/settings");
     } else if (action === "support") {
@@ -89,12 +87,6 @@ export default function SideDrawer({ isOpen, onClose }) {
                 title: t.menuPersonalInfoTitle || "व्यक्तिगत जानकारी",
                 sub: t.menuPersonalInfoSub || "नाम, आयु, फोटो, ईमेल व फोन विवरण",
                 action: "personalInfo",
-              },
-              {
-                Icon: BarnIcon,
-                title: t.navFarm || "फार्म",
-                sub: t.farmPageSub || "डेयरी विवरण व दैनिक चारा खपत",
-                action: "farm",
               },
               {
                 Icon: SettingsIcon,

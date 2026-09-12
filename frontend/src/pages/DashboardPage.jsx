@@ -12,6 +12,7 @@ import BottomNavBar from "../components/layout/BottomNavBar";
 import farmService from "../services/farm/farmService";
 import batchService from "../services/batches/batchService";
 import inspectionService from "../services/inspection/inspectionService";
+import { CowIcon } from "../components/common/Icons";
 
 const BG_IMAGE = "/bg-farm.png";
 
@@ -26,8 +27,11 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
 
-    farmService.getMyFarm().then((farm) => {
-      if (!cancelled) setStats((prev) => ({ ...prev, cattle: farm?.total_cattle ?? 0 }));
+    farmService.listCattleGroups().then((groups) => {
+      if (!cancelled) {
+        const total = groups.reduce((sum, g) => sum + Number(g.count), 0);
+        setStats((prev) => ({ ...prev, cattle: total }));
+      }
     }).catch(() => {
       if (!cancelled) setStats((prev) => ({ ...prev, cattle: 0 }));
     });
@@ -103,9 +107,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-3 mt-8">
             {[
               { val: stats.cattle ?? "...", label: t.statCattle || "Cattle", icon: (
-                <svg className="w-4.5 h-4.5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
+                <CowIcon className="w-4.5 h-4.5 text-emerald-600" />
               )},
               { val: stats.batches ?? "...", label: t.statBatches || "Batches", icon: (
                 <svg className="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

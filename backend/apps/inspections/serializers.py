@@ -45,6 +45,7 @@ class FollowupAnswersSerializer(serializers.Serializer):
 class InspectionContextSerializer(serializers.Serializer):
     latitude = serializers.FloatField(required=False, min_value=-90, max_value=90)
     longitude = serializers.FloatField(required=False, min_value=-180, max_value=180)
+    storage_duration_days = serializers.IntegerField(required=False, min_value=0)
     storage_condition = serializers.ChoiceField(
         choices=Inspection._meta.get_field('storage_condition').choices, required=False,
     )

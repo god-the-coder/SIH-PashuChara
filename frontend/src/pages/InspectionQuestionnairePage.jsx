@@ -58,6 +58,7 @@ export default function InspectionQuestionnairePage() {
   const [questions, setQuestions] = useState([]); // [{ question, answer }] — real Groq-generated follow-ups
 
   const [step, setStep] = useState(0);
+  const [storageDurationDays, setStorageDurationDays] = useState("1");
   const [storageCondition, setStorageCondition] = useState("");
   const [moistureExposure, setMoistureExposure] = useState(null); // true | false | null
   const [farmerObservation, setFarmerObservation] = useState("");
@@ -107,10 +108,10 @@ export default function InspectionQuestionnairePage() {
       });
   }, [inspectionId]);
 
-  // Steps = one per real AI-generated question, then a final "additional info" step.
+  // Steps = one static "storage details" step first, then one per real AI-generated question.
   const totalSteps = questions.length + 1;
-  const onExtraStep = step >= questions.length;
-  const currentQuestion = onExtraStep ? null : questions[step];
+  const isStaticStep = step === 0;
+  const currentQuestion = isStaticStep ? null : questions[step - 1];
   const isLastStep = step === totalSteps - 1;
 
   const handleAnswerChange = (index, value) => {
@@ -122,10 +123,10 @@ export default function InspectionQuestionnairePage() {
   };
 
   const { listening, start, stop } = useVoice((text) => {
-    if (onExtraStep) {
+    if (isStaticStep) {
       setFarmerObservation((prev) => (prev ? `${prev} ${text}` : text));
     } else {
-      handleAnswerChange(step, (questions[step]?.answer ? `${questions[step].answer} ` : "") + text);
+      handleAnswerChange(step - 1, (questions[step - 1]?.answer ? `${questions[step - 1].answer} ` : "") + text);
     }
   });
 
@@ -150,7 +151,7 @@ export default function InspectionQuestionnairePage() {
   };
 
   const handleNext = () => {
-    if (!onExtraStep && !currentQuestion.answer.trim()) {
+    if (!isStaticStep && !currentQuestion.answer.trim()) {
       showToast(t.errAllAnswersRequired);
       return;
     }
@@ -170,16 +171,14 @@ export default function InspectionQuestionnairePage() {
         await inspectionService.submitAnswers(inspectionId, questions.map((q) => q.answer));
       }
 
-      const hasContext = storageCondition || moistureExposure !== null || farmerObservation.trim() || coords;
-      if (hasContext) {
-        await inspectionService.updateContext(inspectionId, {
-          latitude: coords?.latitude,
-          longitude: coords?.longitude,
-          storageCondition: storageCondition || undefined,
-          moistureExposure: moistureExposure === null ? undefined : moistureExposure,
-          farmerObservation: farmerObservation.trim() || undefined,
-        });
-      }
+      await inspectionService.updateContext(inspectionId, {
+        storageDurationDays: Number(storageDurationDays) || 0,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        storageCondition: storageCondition || undefined,
+        moistureExposure: moistureExposure === null ? undefined : moistureExposure,
+        farmerObservation: farmerObservation.trim() || undefined,
+      });
 
       setSubmitted(true);
       showToast(t.answersSavedToast);
@@ -277,9 +276,10 @@ export default function InspectionQuestionnairePage() {
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="px-4 py-2.5 rounded-xl bg-[#2D5A3D] text-white text-xs font-bold cursor-pointer disabled:opacity-60"
+              className="px-4 py-2.5 rounded-xl bg-[#2D5A3D] text-white text-xs font-bold cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
             >
-              {isAnalyzing ? t.analyzingBtn : t.startAnalysisBtn}
+              <span>{isAnalyzing ? t.analyzingBtn : t.startAnalysisBtn}</span>
+              <SparklesIcon className="w-3.5 h-3.5 text-emerald-200" />
             </button>
             <button
               onClick={() => navigate("/dashboard")}
@@ -340,44 +340,24 @@ export default function InspectionQuestionnairePage() {
         {!isLoadingQuestions && !loadError && !submitted && (
           <main className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="bg-white dark:bg-[#1a1f1a] rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-sm p-4 space-y-4">
-              {!onExtraStep ? (
-                <>
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] flex items-center justify-center shrink-0 mt-0.5">
-                      <ClipboardIcon className="w-4 h-4 text-white" />
-                    </div>
-                    <h2 className="text-sm font-black text-[#064d2c] dark:text-white leading-snug">
-                      {currentQuestion.question}
-                    </h2>
-                  </div>
-
-                  <div className="space-y-2">
-                    <textarea
-                      rows={4}
-                      value={currentQuestion.answer}
-                      onChange={(e) => handleAnswerChange(step, e.target.value)}
-                      placeholder={t.answerPlaceholder || "Type here or speak using mic..."}
-                      className="w-full px-3.5 py-3 rounded-2xl border border-[#ded5c2] dark:border-[#242824] text-xs font-semibold bg-[#faf7f0] dark:bg-[#0f1110] text-gray-800 dark:text-white outline-none resize-none leading-relaxed placeholder:text-gray-400 dark:placeholder:text-gray-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => (listening ? stop() : start("hi-IN"))}
-                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                        listening
-                          ? "bg-red-600 text-white border-red-600 animate-pulse"
-                          : "bg-emerald-50 dark:bg-[#0f1a12] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
-                      }`}
-                    >
-                      {listening ? <MicOffIcon className="w-4 h-4" /> : <MicIcon className="w-4 h-4" />}
-                      <span>{listening ? (t.voiceStopBtn || "Stop listening...") : (t.voiceStartBtn || "Speak your answer with mic")}</span>
-                    </button>
-                  </div>
-                </>
-              ) : (
+              {isStaticStep ? (
                 <>
                   <span className="block text-xs font-black text-[#14351d] dark:text-white">
                     {t.additionalInfoOptional}
                   </span>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {t.storageDurationLabel}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={storageDurationDays}
+                      onChange={(e) => setStorageDurationDays(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-[#faf7f0] dark:bg-[#141814] text-gray-800 dark:text-white outline-none"
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -455,6 +435,39 @@ export default function InspectionQuestionnairePage() {
                   >
                     {locationStatus === "done" ? t.locationDoneBtn : locationStatus === "locating" ? t.locatingBtn : t.useLocationBtn}
                   </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] flex items-center justify-center shrink-0 mt-0.5">
+                      <ClipboardIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <h2 className="text-sm font-black text-[#064d2c] dark:text-white leading-snug">
+                      {currentQuestion.question}
+                    </h2>
+                  </div>
+
+                  <div className="space-y-2">
+                    <textarea
+                      rows={4}
+                      value={currentQuestion.answer}
+                      onChange={(e) => handleAnswerChange(step - 1, e.target.value)}
+                      placeholder={t.answerPlaceholder || "Type here or speak using mic..."}
+                      className="w-full px-3.5 py-3 rounded-2xl border border-[#ded5c2] dark:border-[#242824] text-xs font-semibold bg-[#faf7f0] dark:bg-[#0f1110] text-gray-800 dark:text-white outline-none resize-none leading-relaxed placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => (listening ? stop() : start("hi-IN"))}
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                        listening
+                          ? "bg-red-600 text-white border-red-600 animate-pulse"
+                          : "bg-emerald-50 dark:bg-[#0f1a12] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
+                      }`}
+                    >
+                      {listening ? <MicOffIcon className="w-4 h-4" /> : <MicIcon className="w-4 h-4" />}
+                      <span>{listening ? (t.voiceStopBtn || "Stop listening...") : (t.voiceStartBtn || "Speak your answer with mic")}</span>
+                    </button>
+                  </div>
                 </>
               )}
             </div>
