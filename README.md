@@ -14,11 +14,11 @@ To empower every dairy farmer with accessible, instant, and reliable AI-driven f
 
 ## 💡 Innovation
 1. **Zero-Click Voice Assessment:** The system automatically reads the questions and triggers the microphone to listen for the farmer's response, extracting insights using NLP.
-2. **Edge & Cloud Hybrid AI:** Lightweight, real-time bounding boxes and image quality checks run on the device (Edge), while deep qualitative analysis runs on specialized LLMs in the cloud.
+2. **Edge & Cloud Hybrid AI (Local & Cloud LLMs):** In Online mode, deep qualitative analysis runs on specialized, high-capacity cloud APIs (Gemini/Groq). In Offline mode, the system seamlessly falls back to a locally downloaded ML/LLM model running directly on the device (Edge AI) to provide immediate assessments without internet connectivity.
 3. **Agri-Specific Fine-Tuning:** The visual models are specifically prompted and tuned to recognize nuances in Indian agricultural feeds like Corn Silage, Green Fodder, and Dry Straw.
 
 ## 📊 Feasibility
-- **Technical Feasibility:** Built on scalable, modern tech stacks (React+Vite PWA Frontend, Django+PostgreSQL Backend). AI integrations are handled via robust API providers (Gemini, Groq) with parallel sharding for high performance.
+- **Technical Feasibility:** Built on scalable, modern tech stacks (React+Vite PWA Frontend, Django+PostgreSQL Backend). AI integrations are handled via robust API providers (Gemini, Groq) with parallel sharding for high performance online, paired with on-device local ML models for offline capabilities.
 - **Operational Feasibility:** Requires only a standard smartphone with a camera and basic microphone. The intuitive Voice UI ensures high adoption rates among less tech-savvy users.
 
 ## 🌱 Viability
@@ -30,7 +30,7 @@ To empower every dairy farmer with accessible, instant, and reliable AI-driven f
 
 The system follows a modern decoupled architecture:
 
-1. **Frontend (Client Layer):** Progressive Web App (PWA) built with React, Vite, and TailwindCSS. Manages offline storage (IndexedDB), speech synthesis, speech recognition, and camera hardware access.
+1. **Frontend (Client Layer):** Progressive Web App (PWA) built with React, Vite, and TailwindCSS. Manages offline storage (IndexedDB), speech synthesis, speech recognition, camera hardware access, and runs the local ML model.
 2. **Backend (API Layer):** Django REST Framework. Handles authentication (OTP/Google), farm metadata, inspection history, and QR report generation.
 3. **AI Orchestration Layer:** Python-based asynchronous workers that route image data to Vision LLMs (Gemini/Groq) and process natural language responses.
 4. **Database Layer:** PostgreSQL for structured relational data (Users, Farms, Inspections, Results).
@@ -42,17 +42,18 @@ graph TD
     A[Farmer Opens App] -->|No Internet| B(Offline Mode)
     A -->|Internet Available| C(Online Mode)
     
-    B --> D[Local Camera Capture]
-    D --> E[Voice/Text Questionnaire]
-    E --> F[Save to Local IndexedDB]
-    F -.->|Sync when Online| G
+    B --> D[Local Camera Capture & Questionnaire]
+    D --> E[Local ML / LLM Inference on Device]
+    E --> F[Immediate Offline Assessment]
+    F --> G[Save to Local IndexedDB]
+    G -.->|Sync when Online| H
     
-    C --> G[Upload Image & Data to Backend]
-    G --> H[AI Orchestration Layer]
-    H --> I[Groq/Gemini Vision Models]
-    I --> J[Analyze Mold, Color, Texture, Risk]
-    J --> K[Generate Assessment Report & QR]
-    K --> L[Return Results to Farmer's Dashboard]
+    C --> H[Upload Image & Data to Backend]
+    H --> I[AI Orchestration Layer]
+    I --> J[Groq/Gemini Cloud Vision APIs]
+    J --> K[Analyze Mold, Color, Texture, Risk]
+    K --> L[Generate Assessment Report & QR]
+    L --> M[Return Results to Farmer's Dashboard]
 ```
 
 ## 📶 Online vs Offline Mode
@@ -62,7 +63,7 @@ graph TD
 | **Authentication** | Full OTP/Google Auth | Cached Session Login |
 | **Image Capture** | Yes, with live cloud feedback | Yes, saved locally |
 | **Questionnaire** | Cloud NLP processing | Local Voice-to-Text |
-| **AI Assessment** | Instant processing via LLMs | Queued for later processing |
+| **AI Assessment** | Cloud APIs (Gemini/Groq) for deep analysis | **Local ML/LLM model for on-device inference** |
 | **Reports** | Generate, Share, Print PDFs | View cached past reports |
 | **Data Syncing** | Real-time | Background Sync on reconnect |
 
