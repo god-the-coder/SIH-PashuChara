@@ -14,17 +14,17 @@ import {
 } from '../components'
 import { ROUTES } from '../constants/routes'
 
+import { WheatIcon } from '../components/common/Icons'
+
 function HomePage() {
   return (
     <Container size="sm">
         <Card>
           <CardHeader className="text-center items-center">
             <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 shadow-xs">
-              <span className="text-2xl" role="img" aria-label="sprout">
-                🌾
-              </span>
+              <WheatIcon className="w-8 h-8 text-emerald-700" />
             </div>
-            <CardTitle>PashuChara-AI</CardTitle>
+            <CardTitle>PashuChara</CardTitle>
             <CardDescription>
               AI-driven animal feed formulation and cattle ration optimization platform.
             </CardDescription>

@@ -4,7 +4,41 @@ import { useDashboard } from "../context/DashboardContext";
 import inspectionService from "../services/inspection/inspectionService";
 import batchService from "../services/batches/batchService";
 import SubPageHeader from "../components/layout/SubPageHeader";
-import { CheckIcon } from "../components/common/Icons";
+import {
+  CheckIcon,
+  ClipboardIcon,
+  MicIcon,
+  MicOffIcon,
+  SendIcon,
+  SparklesIcon,
+} from "../components/common/Icons";
+
+function useVoice(onResult) {
+  const recognitionRef = useRef(null);
+  const [listening, setListening] = useState(false);
+
+  const start = (lang) => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const r = new SR();
+    r.lang = lang || "hi-IN";
+    r.continuous = false;
+    r.interimResults = false;
+    r.onstart = () => setListening(true);
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    r.onresult = (e) => onResult(e.results[0][0].transcript);
+    recognitionRef.current = r;
+    r.start();
+  };
+
+  const stop = () => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  };
+
+  return { listening, start, stop };
+}
 
 export default function InspectionQuestionnairePage() {
   const navigate = useNavigate();
@@ -21,8 +55,9 @@ export default function InspectionQuestionnairePage() {
   const [loadError, setLoadError] = useState(() =>
     inspectionId ? "" : t.errNoActiveInspection,
   );
-  const [questions, setQuestions] = useState([]); // [{ question, answer }]
+  const [questions, setQuestions] = useState([]); // [{ question, answer }] — real Groq-generated follow-ups
 
+  const [step, setStep] = useState(0);
   const [storageCondition, setStorageCondition] = useState("");
   const [moistureExposure, setMoistureExposure] = useState(null); // true | false | null
   const [farmerObservation, setFarmerObservation] = useState("");
@@ -72,11 +107,27 @@ export default function InspectionQuestionnairePage() {
       });
   }, [inspectionId]);
 
+  // Steps = one per real AI-generated question, then a final "additional info" step.
+  const totalSteps = questions.length + 1;
+  const onExtraStep = step >= questions.length;
+  const currentQuestion = onExtraStep ? null : questions[step];
+  const isLastStep = step === totalSteps - 1;
+
   const handleAnswerChange = (index, value) => {
-    const updated = [...questions];
-    updated[index] = { ...updated[index], answer: value };
-    setQuestions(updated);
+    setQuestions((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], answer: value };
+      return updated;
+    });
   };
+
+  const { listening, start, stop } = useVoice((text) => {
+    if (onExtraStep) {
+      setFarmerObservation((prev) => (prev ? `${prev} ${text}` : text));
+    } else {
+      handleAnswerChange(step, (questions[step]?.answer ? `${questions[step].answer} ` : "") + text);
+    }
+  });
 
   const handleUseLocation = () => {
     if (!navigator.geolocation) {
@@ -98,18 +149,26 @@ export default function InspectionQuestionnairePage() {
     );
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitError("");
-
-    if (questions.some((q) => !q.answer.trim())) {
-      setSubmitError(t.errAllAnswersRequired);
+  const handleNext = () => {
+    if (!onExtraStep && !currentQuestion.answer.trim()) {
+      showToast(t.errAllAnswersRequired);
       return;
     }
+    if (isLastStep) {
+      handleSubmit();
+    } else {
+      stop();
+      setStep((s) => s + 1);
+    }
+  };
 
+  const handleSubmit = async () => {
+    setSubmitError("");
     setIsSubmitting(true);
     try {
-      await inspectionService.submitAnswers(inspectionId, questions.map((q) => q.answer));
+      if (questions.length > 0) {
+        await inspectionService.submitAnswers(inspectionId, questions.map((q) => q.answer));
+      }
 
       const hasContext = storageCondition || moistureExposure !== null || farmerObservation.trim() || coords;
       if (hasContext) {
@@ -166,17 +225,28 @@ export default function InspectionQuestionnairePage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden text-[#1a1c18] dark:text-[#f3ede2] flex justify-center bg-[#FAF7F0] dark:bg-[#121512] antialiased">
-      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col justify-between p-4 shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
+      <div className="relative z-10 w-full max-w-[430px] min-h-screen flex flex-col shadow-xl bg-[#FAF7F0] dark:bg-[#141814]">
         <SubPageHeader
           title={t.qHeaderTitle}
           subtitle={t.qHeaderSubtitle}
           backTo={-1}
           actionBtn={
-            <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-[11px] font-bold text-[#2D5A3D] dark:text-[#86efac]">
-              {t.stepIndicatorQuestions}
-            </span>
+            !isLoadingQuestions && !loadError && !submitted && (
+              <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-[11px] font-bold text-[#2D5A3D] dark:text-[#86efac]">
+                {step + 1}/{totalSteps}
+              </span>
+            )
           }
         />
+
+        {!isLoadingQuestions && !loadError && !submitted && (
+          <div className="w-full h-1 bg-[#ded5c2] dark:bg-[#1e271e]">
+            <div
+              className="h-full bg-[#2D5A3D] transition-all duration-500 ease-out"
+              style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
+            />
+          </div>
+        )}
 
         {isLoadingQuestions && (
           <div className="flex-1 flex items-center justify-center">
@@ -237,7 +307,7 @@ export default function InspectionQuestionnairePage() {
 
             {savedBatch ? (
               <div className="p-4 rounded-2xl bg-white dark:bg-[#1a1f1a] border border-emerald-500/40 text-center space-y-1">
-                <span className="text-xl">📦</span>
+                <ClipboardIcon className="w-6 h-6 text-emerald-700 dark:text-emerald-400 mx-auto" />
                 <p className="text-xs font-black text-[#14351d] dark:text-white">{t.savedLinkedBatchTitle}</p>
                 {savedBatch.batch_code && (
                   <p className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
@@ -268,106 +338,170 @@ export default function InspectionQuestionnairePage() {
         )}
 
         {!isLoadingQuestions && !loadError && !submitted && (
-          <form onSubmit={handleSubmit} className="my-3 space-y-3 flex-1 overflow-y-auto pr-0.5">
-            {questions.map((q, idx) => (
-              <div key={idx} className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs">
-                <label className="block text-xs font-black text-[#14351d] dark:text-white mb-2">
-                  {idx + 1}. {q.question}
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  value={q.answer}
-                  onChange={(e) => handleAnswerChange(idx, e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-[#faf7f0] dark:bg-[#141814] text-gray-800 dark:text-white outline-none resize-none"
-                />
-              </div>
-            ))}
+          <main className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="bg-white dark:bg-[#1a1f1a] rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-sm p-4 space-y-4">
+              {!onExtraStep ? (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] flex items-center justify-center shrink-0 mt-0.5">
+                      <ClipboardIcon className="w-4 h-4 text-white" />
+                    </div>
+                    <h2 className="text-sm font-black text-[#064d2c] dark:text-white leading-snug">
+                      {currentQuestion.question}
+                    </h2>
+                  </div>
 
-            <div className="bg-white dark:bg-[#1a1f1a] p-3.5 rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-xs space-y-3">
-              <span className="block text-xs font-black text-[#14351d] dark:text-white">
-                {t.additionalInfoOptional}
-              </span>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.storageConditionLabel}
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {STORAGE_CONDITIONS.map((opt) => (
+                  <div className="space-y-2">
+                    <textarea
+                      rows={4}
+                      value={currentQuestion.answer}
+                      onChange={(e) => handleAnswerChange(step, e.target.value)}
+                      placeholder={t.answerPlaceholder || "Type here or speak using mic..."}
+                      className="w-full px-3.5 py-3 rounded-2xl border border-[#ded5c2] dark:border-[#242824] text-xs font-semibold bg-[#faf7f0] dark:bg-[#0f1110] text-gray-800 dark:text-white outline-none resize-none leading-relaxed placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                    />
                     <button
                       type="button"
-                      key={opt.value}
-                      onClick={() => setStorageCondition(opt.value)}
-                      className={`py-2 px-1 rounded-xl text-[11px] font-bold border cursor-pointer ${
-                        storageCondition === opt.value
-                          ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
-                          : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                      onClick={() => (listening ? stop() : start("hi-IN"))}
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                        listening
+                          ? "bg-red-600 text-white border-red-600 animate-pulse"
+                          : "bg-emerald-50 dark:bg-[#0f1a12] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
                       }`}
                     >
-                      {opt.label}
+                      {listening ? <MicOffIcon className="w-4 h-4" /> : <MicIcon className="w-4 h-4" />}
+                      <span>{listening ? (t.voiceStopBtn || "Stop listening...") : (t.voiceStartBtn || "Speak your answer with mic")}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="block text-xs font-black text-[#14351d] dark:text-white">
+                    {t.additionalInfoOptional}
+                  </span>
 
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.moistureExposureLabel}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[{ label: t.yesText, value: true }, { label: t.noText, value: false }].map((opt) => (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {t.storageConditionLabel}
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {STORAGE_CONDITIONS.map((opt) => (
+                        <button
+                          type="button"
+                          key={opt.value}
+                          onClick={() => setStorageCondition(opt.value)}
+                          className={`py-2 px-1 rounded-xl text-[11px] font-bold border cursor-pointer ${
+                            storageCondition === opt.value
+                              ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
+                              : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {t.moistureExposureLabel}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[{ label: t.yesText, value: true }, { label: t.noText, value: false }].map((opt) => (
+                        <button
+                          type="button"
+                          key={String(opt.value)}
+                          onClick={() => setMoistureExposure(opt.value)}
+                          className={`py-2 px-2 rounded-xl text-xs font-bold border cursor-pointer ${
+                            moistureExposure === opt.value
+                              ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
+                              : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {t.otherCommentLabel}
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={farmerObservation}
+                      onChange={(e) => setFarmerObservation(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-[#faf7f0] dark:bg-[#141814] text-gray-800 dark:text-white outline-none resize-none"
+                    />
                     <button
                       type="button"
-                      key={String(opt.value)}
-                      onClick={() => setMoistureExposure(opt.value)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border cursor-pointer ${
-                        moistureExposure === opt.value
-                          ? "bg-[#2D5A3D] text-white border-[#2D5A3D]"
-                          : "bg-[#faf7f0] dark:bg-[#141814] text-gray-700 dark:text-gray-300 border-[#ded5c2] dark:border-[#28382d]"
+                      onClick={() => (listening ? stop() : start("hi-IN"))}
+                      className={`w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                        listening
+                          ? "bg-red-600 text-white border-red-600 animate-pulse"
+                          : "bg-emerald-50 dark:bg-[#0f1a12] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
                       }`}
                     >
-                      {opt.label}
+                      {listening ? <MicOffIcon className="w-3.5 h-3.5" /> : <MicIcon className="w-3.5 h-3.5" />}
+                      <span>{listening ? (t.voiceStopBtn || "Stop listening...") : (t.voiceStartBtn || "Speak your answer with mic")}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  {t.otherCommentLabel}
-                </label>
-                <textarea
-                  rows={2}
-                  value={farmerObservation}
-                  onChange={(e) => setFarmerObservation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold bg-[#faf7f0] dark:bg-[#141814] text-gray-800 dark:text-white outline-none resize-none"
-                />
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleUseLocation}
+                    disabled={locationStatus === "locating"}
+                    className="w-full py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer disabled:opacity-60"
+                  >
+                    {locationStatus === "done" ? t.locationDoneBtn : locationStatus === "locating" ? t.locatingBtn : t.useLocationBtn}
+                  </button>
+                </>
+              )}
+            </div>
 
+            <div className="flex items-center gap-3">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => s - 1)}
+                  className="px-4 py-3 rounded-2xl text-xs font-bold border border-[#ded5c2] dark:border-[#242824] text-gray-600 dark:text-gray-300 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  {t.prevBtn || "Previous"}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleUseLocation}
-                disabled={locationStatus === "locating"}
-                className="w-full py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#28382d] text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer disabled:opacity-60"
+                onClick={handleNext}
+                disabled={isSubmitting}
+                className="flex-1 py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99] disabled:opacity-60"
               >
-                {locationStatus === "done" ? t.locationDoneBtn : locationStatus === "locating" ? t.locatingBtn : t.useLocationBtn}
+                {isLastStep ? (
+                  <>
+                    <span>{isSubmitting ? t.savingBtn : t.submitAnswersBtn}</span>
+                    {isSubmitting ? <SparklesIcon className="w-4 h-4 text-emerald-200" /> : <CheckIcon className="w-4 h-4" />}
+                  </>
+                ) : (
+                  <>
+                    <span>{t.nextBtn || "Next Question"}</span>
+                    <SendIcon className="w-4 h-4 text-emerald-200" />
+                  </>
+                )}
               </button>
             </div>
 
             {submitError && <p className="text-xs font-bold text-red-600 dark:text-red-400">{submitError}</p>}
 
-            <div className="pt-1 pb-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99] disabled:opacity-60"
-              >
-                <span>{isSubmitting ? t.savingBtn : t.submitAnswersBtn}</span>
-                <CheckIcon className="w-4 h-4" />
-              </button>
+            <div className="flex items-center justify-center gap-1.5 pb-2">
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === step ? "w-5 h-2 bg-[#2D5A3D]" : i < step ? "w-2 h-2 bg-emerald-400 dark:bg-emerald-600" : "w-2 h-2 bg-[#ded5c2] dark:bg-[#2a322a]"
+                  }`}
+                />
+              ))}
             </div>
-          </form>
+          </main>
         )}
       </div>
     </div>

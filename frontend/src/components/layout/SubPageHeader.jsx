@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../../context/DashboardContext";
 import { SUPPORTED_LANGUAGES, translations } from "../../constants/translations";
+import { GlobeIcon, CheckIcon } from "../common/Icons";
 
 export default function SubPageHeader({
   title,
@@ -11,7 +12,7 @@ export default function SubPageHeader({
   showLang = true,
 }) {
   const navigate = useNavigate();
-  const { lang, changeLang, t } = useDashboard();
+  const { lang, changeLang } = useDashboard();
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const langRef = useRef(null);
 
@@ -60,7 +61,7 @@ export default function SubPageHeader({
               aria-label="Change Language"
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#191c19] border border-[#ded5c2] dark:border-[#2a3c2c] text-[11px] font-bold text-[#064d2c] dark:text-gray-200 shadow-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-[#243327]"
             >
-              <span>🌐</span>
+              <GlobeIcon className="w-3 h-3" strokeWidth={2} />
               <span className="font-semibold">{translations[lang]?.langLabel || "हिन्दी"}</span>
               <svg
                 className="w-3 h-3 text-gray-500 dark:text-gray-300 stroke-current stroke-[2.5] transition-transform duration-200"
@@ -85,7 +86,7 @@ export default function SubPageHeader({
                   >
                     <span>{translations[code]?.langLabel || code}</span>
                     {lang === code && (
-                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">✓</span>
+                      <CheckIcon className="w-3 h-3 text-emerald-700 dark:text-emerald-400" strokeWidth={2.5} />
                     )}
                   </button>
                 ))}

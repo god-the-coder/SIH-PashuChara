@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 
-from .models import Farm
+from .models import CattleGroup, Farm
 from .selectors import get_farm_by_owner
 
 
@@ -24,3 +24,21 @@ def update_farm(*, farm, farm_name=None, location=None, total_cattle=None):
     farm.full_clean()
     farm.save()
     return farm
+
+
+def create_cattle_group(*, owner, category, breed, count=1, milk_liters_per_day=0, lactation_stage=''):
+    group = CattleGroup(
+        owner=owner,
+        category=category,
+        breed=breed,
+        count=count,
+        milk_liters_per_day=milk_liters_per_day,
+        lactation_stage=lactation_stage,
+    )
+    group.full_clean()
+    group.save()
+    return group
+
+
+def delete_cattle_group(*, group):
+    group.delete()

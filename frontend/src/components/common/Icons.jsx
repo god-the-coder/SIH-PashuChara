@@ -257,6 +257,14 @@ export const CornIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
   </svg>
 );
 
+// Leaf / Fresh Fodder & Silage
+export const LeafIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c8-1 13-6 14-14C10 7 5 12 4 20z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 19c3-3 6-6 11-11" />
+  </svg>
+);
+
 // Grain sack / Feed & Grain
 export const GrainIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
   <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24">
@@ -377,6 +385,24 @@ export const ClockIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
   <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="9" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+  </svg>
+);
+
+// QR Code
+export const QrCodeIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24">
+    <rect x="3.75" y="3.75" width="6" height="6" rx="1" />
+    <rect x="14.25" y="3.75" width="6" height="6" rx="1" />
+    <rect x="3.75" y="14.25" width="6" height="6" rx="1" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75zm10.5 0h.008v.008h-.008V6.75zM6.75 17.25h.008v.008H6.75v-.008z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 14.25h2.25v2.25h-2.25v-2.25zm0 3.75h2.25M17.25 17.25h3M20.25 14.25v6M14.25 20.25h6" />
+  </svg>
+);
+
+// Trend Up / Analytics
+export const TrendUpIcon = ({ className = "w-5 h-5", strokeWidth = 1.8 }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.2m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
   </svg>
 );
 

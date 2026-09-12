@@ -4,14 +4,15 @@ import farmService from "../services/farm/farmService";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import { BarnIcon, LocationPinIcon, CowIcon, MilkIcon, WheatIcon, ClipboardIcon, EditIcon } from "../components/common/Icons";
+import { detectCurrentLocationLabel } from "../utils/geolocation";
 
 export default function FarmPage() {
-  const { t, showToast, user } = useDashboard();
+  const { t, showToast, user, farm, setFarm } = useDashboard();
 
-  const [farm, setFarm] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({ farmName: "", location: "", totalCattle: "" });
@@ -40,7 +41,7 @@ export default function FarmPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setFarm]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -218,13 +219,34 @@ export default function FarmPage() {
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                   {t.farmLocationLabel || "स्थान (Location)"}
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-xs font-bold bg-white dark:bg-[#0f1411] text-gray-800 dark:text-white outline-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={isLocating}
+                    onClick={async () => {
+                      setIsLocating(true);
+                      try {
+                        const label = await detectCurrentLocationLabel();
+                        if (label) setForm((prev) => ({ ...prev, location: label }));
+                        else showToast(t.errLocationFailed || "स्थान पता नहीं चला");
+                      } catch {
+                        showToast(t.errLocationFailed || "स्थान पता नहीं चला — अनुमति जाँचें");
+                      } finally {
+                        setIsLocating(false);
+                      }
+                    }}
+                    className="shrink-0 px-3 rounded-xl border border-[#ded5c2] dark:border-[#242824] text-emerald-800 dark:text-emerald-300 flex items-center justify-center cursor-pointer disabled:opacity-60"
+                  >
+                    <LocationPinIcon className={`w-4 h-4 ${isLocating ? "animate-pulse" : ""}`} />
+                  </button>
+                </div>
               </div>
 
               <div>

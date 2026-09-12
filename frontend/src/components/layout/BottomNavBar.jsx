@@ -45,7 +45,7 @@ export default function BottomNavBar() {
 
   const rightItems = [
     { id: "nav-history", path: "/history", label: t.navHistory || "History", Icon: LogIcon },
-    { id: "nav-farm", path: "/farm", label: t.navFarm || "Farm", Icon: FarmIcon },
+    { id: "nav-farm", path: "/cattle", label: t.navFarm || "Farm", Icon: FarmIcon },
   ];
 
   const isActive = (path) => location.pathname === path;

@@ -31,7 +31,7 @@ export default function CloudBatchReportPage() {
         <div className="no-print"><SubPageHeader title="Saved QR report" subtitle={batch.batch_code} backTo="/qr-report" /></div>
         <main className="space-y-5 p-5 sm:p-8">
           <header className="border-b-2 border-[#064d2c] pb-4">
-            <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-700">PashuChaara AI</p>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-700">PashuChara AI</p>
             <h1 className="mt-1 text-2xl font-black text-[#064d2c]">Batch quality report</h1>
             <p className="mt-2 text-sm text-gray-600">{batch.batch_label || "Unnamed batch"} · {batch.batch_code}</p>
           </header>

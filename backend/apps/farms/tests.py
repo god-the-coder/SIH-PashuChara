@@ -5,8 +5,8 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 
 from .permissions import IsFarmOwner
-from .selectors import get_farm_by_id, get_farm_by_owner
-from .services import create_farm, update_farm
+from .selectors import get_cattle_groups_by_owner, get_farm_by_id, get_farm_by_owner
+from .services import create_cattle_group, create_farm, delete_cattle_group, update_farm
 
 
 class FarmSelectorTests(TestCase):
@@ -137,3 +137,101 @@ class FarmApiTests(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get('/api/farms/me/')
         self.assertEqual(response.status_code, 404)
+
+
+class CattleGroupServiceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            phone_number='+919876520008', full_name='Owner', password='StrongPass123',
+        )
+
+    def test_create_cattle_group(self):
+        group = create_cattle_group(owner=self.owner, category='cow', breed='Sahiwal', count=8, milk_liters_per_day=120)
+        self.assertEqual(group.owner, self.owner)
+        self.assertEqual(group.count, 8)
+
+    def test_create_cattle_group_defaults(self):
+        group = create_cattle_group(owner=self.owner, category='goat', breed='Sirohi')
+        self.assertEqual(group.count, 1)
+        self.assertEqual(group.milk_liters_per_day, 0)
+
+    def test_delete_cattle_group(self):
+        group = create_cattle_group(owner=self.owner, category='buffalo', breed='Murrah', count=4)
+        delete_cattle_group(group=group)
+        self.assertEqual(get_cattle_groups_by_owner(owner=self.owner).count(), 0)
+
+    def test_get_cattle_groups_by_owner_isolated(self):
+        other = User.objects.create_user(
+            phone_number='+919876520009', full_name='Other', password='StrongPass123',
+        )
+        create_cattle_group(owner=self.owner, category='cow', breed='Gir', count=4)
+        create_cattle_group(owner=other, category='cow', breed='Jersey', count=2)
+
+        self.assertEqual(get_cattle_groups_by_owner(owner=self.owner).count(), 1)
+        self.assertEqual(get_cattle_groups_by_owner(owner=other).count(), 1)
+
+
+class CattleGroupApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            phone_number='+919876520010', full_name='API Farmer', password='StrongPass123',
+        )
+
+    def test_list_requires_authentication(self):
+        response = self.client.get('/api/farms/cattle/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_create_list_and_delete_flow(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            '/api/farms/cattle/',
+            {'category': 'cow', 'breed': 'Sahiwal', 'count': 8, 'milk_liters_per_day': 120, 'lactation_stage': 'दुधारू'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201)
+        group_id = response.data['id']
+
+        response = self.client.get('/api/farms/cattle/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['breed'], 'Sahiwal')
+
+        response = self.client.delete(f'/api/farms/cattle/{group_id}/')
+        self.assertEqual(response.status_code, 204)
+
+        response = self.client.get('/api/farms/cattle/')
+        self.assertEqual(len(response.data), 0)
+
+    def test_create_defaults_count_to_one(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post('/api/farms/cattle/', {'category': 'goat', 'breed': 'Beetal'}, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['count'], 1)
+
+    def test_delete_rejects_other_owners_group(self):
+        other = User.objects.create_user(
+            phone_number='+919876520011', full_name='Other Farmer', password='StrongPass123',
+        )
+        group = create_cattle_group(owner=other, category='cow', breed='Jersey', count=2)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.delete(f'/api/farms/cattle/{group.id}/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_missing_group_returns_404(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.delete('/api/farms/cattle/999999/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_cattle_groups_isolated_per_owner(self):
+        other = User.objects.create_user(
+            phone_number='+919876520012', full_name='Other Farmer', password='StrongPass123',
+        )
+        create_cattle_group(owner=other, category='cow', breed='Jersey', count=2)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get('/api/farms/cattle/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 0)

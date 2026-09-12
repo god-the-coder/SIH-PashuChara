@@ -4,7 +4,7 @@ import { useDashboard } from "../context/DashboardContext";
 import batchService from "../services/batches/batchService";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import SubPageHeader from "../components/layout/SubPageHeader";
-import { CornIcon, GrainIcon, PackageIcon } from "../components/common/Icons";
+import { CornIcon, GrainIcon, PackageIcon, QrCodeIcon, TrendUpIcon } from "../components/common/Icons";
 
 export default function BatchesPage() {
   const navigate = useNavigate();
@@ -228,15 +228,17 @@ export default function BatchesPage() {
                 <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-white/10">
                   <button
                     onClick={() => handleShowQr(batch.id)}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-[#86efac] text-xs font-bold border border-emerald-300 dark:border-emerald-700/50 hover:bg-emerald-100 dark:hover:bg-[#20402e] cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-[#86efac] text-xs font-bold border border-emerald-300 dark:border-emerald-700/50 hover:bg-emerald-100 dark:hover:bg-[#20402e] cursor-pointer"
                   >
-                    {qrBatchId === batch.id ? t.hideQrBtn : t.showQrBtn}
+                    <QrCodeIcon className="w-3.5 h-3.5" strokeWidth={2} />
+                    <span>{qrBatchId === batch.id ? t.hideQrBtn : t.showQrBtn}</span>
                   </button>
                   <button
                     onClick={() => handleShowTrend(batch.id)}
-                    className="flex-1 px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f1411] text-gray-700 dark:text-gray-300 text-xs font-bold border border-[#ded5c2] dark:border-[#242824] hover:bg-gray-50 cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#0f1411] text-gray-700 dark:text-gray-300 text-xs font-bold border border-[#ded5c2] dark:border-[#242824] hover:bg-gray-50 cursor-pointer"
                   >
-                    {trend ? t.hideTrendBtn : t.showTrendBtn}
+                    <TrendUpIcon className="w-3.5 h-3.5" strokeWidth={2} />
+                    <span>{trend ? t.hideTrendBtn : t.showTrendBtn}</span>
                   </button>
                   <button
                     onClick={() => navigate(`/inspect/new?type=silage&batchId=${batch.id}`)}

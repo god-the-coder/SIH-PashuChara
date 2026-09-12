@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useDashboard } from "../context/DashboardContext";
+import farmService from "../services/farm/farmService";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import BottomNavBar from "../components/layout/BottomNavBar";
 import { CowIcon, BuffaloIcon, GoatIcon, MilkIcon, WheatIcon, MicIcon, CloseIcon, ClipboardIcon, PlusIcon } from "../components/common/Icons";
@@ -10,18 +10,11 @@ const BUFFALO_BREEDS = ["मुर्राह (Murrah)", "जाफराबा
 const GOAT_BREEDS = ["बरबरी (Barbari)", "सिरोही (Sirohi)", "जमुनापारी (Jamunapari)", "बीटल (Beetal)"];
 
 export default function CattlePage() {
-  const navigate = useNavigate();
-  const { t, user, showToast } = useDashboard();
+  const { t, showToast } = useDashboard();
 
-  const [cattleList, setCattleList] = useState(
-    user?.cattleDetails && user.cattleDetails.length > 0
-      ? user.cattleDetails
-      : [
-          { id: "c-1", category: "cow", breed: "साहीवाल (Sahiwal)", count: 8, milkLiters: 120, lactationStage: "दुधारू" },
-          { id: "c-2", category: "cow", breed: "गिर (Gir)", count: 4, milkLiters: 65, lactationStage: "दुधारू" },
-          { id: "c-3", category: "buffalo", breed: "मुर्राह (Murrah)", count: 12, milkLiters: 160, lactationStage: "दुधारू" },
-        ]
-  );
+  const [cattleList, setCattleList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const [isListening, setIsListening] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -35,48 +28,77 @@ export default function CattlePage() {
     lactationStage: "दुधारू",
   });
 
-  // Simulated Voice Dictation for Cattle Details
+  useEffect(() => {
+    let cancelled = false;
+    farmService
+      .listCattleGroups()
+      .then((data) => {
+        if (!cancelled) setCattleList(data);
+      })
+      .catch((apiError) => {
+        if (!cancelled) setLoadError(apiError.message || "पशु सूची लोड नहीं हो सकी।");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Voice dictation is simulated (no real speech parsing yet) — the recognized
+  // entry below is still saved through the real cattle-group endpoint.
   const handleVoiceFill = () => {
     setIsListening(true);
     showToast("पशु विवरण सुन रहे हैं... गाय/भैंस, नस्ल और संख्या बोलें");
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsListening(false);
-      const voiceAdded = {
-        id: `c-${Date.now()}`,
-        category: "cow",
-        breed: "गिर (Gir)",
-        count: 6,
-        milkLiters: 90,
-        lactationStage: "दुधारू",
-      };
-      const updated = [...cattleList, voiceAdded];
-      setCattleList(updated);
-      showToast("बोलकर 6 गिर गायें सफलतापूर्वक जोड़ी गईं!");
+      try {
+        const created = await farmService.createCattleGroup({
+          category: "cow",
+          breed: "गिर (Gir)",
+          count: 6,
+          milkLitersPerDay: 90,
+          lactationStage: "दुधारू",
+        });
+        setCattleList((prev) => [...prev, created]);
+        showToast("बोलकर 6 गिर गायें सफलतापूर्वक जोड़ी गईं!");
+      } catch (apiError) {
+        showToast(apiError.message || "पशु रिकॉर्ड सुरक्षित नहीं हो सका।");
+      }
     }, 1900);
   };
 
-  const handleAddCattle = (e) => {
+  const handleAddCattle = async (e) => {
     e.preventDefault();
-    const entry = {
-      id: `c-${Date.now()}`,
-      ...newCattle,
-      count: Number(newCattle.count) || 1,
-      milkLiters: Number(newCattle.milkLiters) || 0,
-    };
-    const updated = [...cattleList, entry];
-    setCattleList(updated);
-    setModalOpen(false);
-    showToast("नया पशु रिकॉर्ड सफलतापूर्वक जोड़ा गया!");
+    try {
+      const created = await farmService.createCattleGroup({
+        category: newCattle.category,
+        breed: newCattle.breed,
+        count: Number(newCattle.count) || 1,
+        milkLitersPerDay: Number(newCattle.milkLiters) || 0,
+        lactationStage: newCattle.lactationStage,
+      });
+      setCattleList((prev) => [...prev, created]);
+      setModalOpen(false);
+      showToast("नया पशु रिकॉर्ड सफलतापूर्वक जोड़ा गया!");
+    } catch (apiError) {
+      showToast(apiError.message || "पशु रिकॉर्ड सुरक्षित नहीं हो सका।");
+    }
   };
 
-  const handleRemove = (id) => {
-    const updated = cattleList.filter((c) => c.id !== id);
-    setCattleList(updated);
-    showToast("पशु रिकॉर्ड हटाया गया");
+  const handleRemove = async (id) => {
+    try {
+      await farmService.deleteCattleGroup(id);
+      setCattleList((prev) => prev.filter((c) => c.id !== id));
+      showToast("पशु रिकॉर्ड हटाया गया");
+    } catch (apiError) {
+      showToast(apiError.message || "पशु रिकॉर्ड हटाया नहीं जा सका।");
+    }
   };
 
   const totalCattleCount = cattleList.reduce((sum, c) => sum + Number(c.count), 0);
-  const totalMilk = cattleList.reduce((sum, c) => sum + Number(c.milkLiters), 0);
+  const totalMilk = cattleList.reduce((sum, c) => sum + Number(c.milk_liters_per_day), 0);
   const dailyFodderKg = totalCattleCount * 20;
 
   const currentBreeds =
@@ -100,8 +122,9 @@ export default function CattlePage() {
         <main className="p-4 space-y-3.5 flex-1 overflow-y-auto">
           {/* Action Row */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-              {t.totalCattleMetric || "पशुधन रजिस्टर"}
+            <span className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
+              <span>{t.totalCattleMetric || "पशुधन रजिस्टर"}</span>
+              <CowIcon className="w-3.5 h-3.5" />
             </span>
             <button
               onClick={() => setModalOpen(true)}
@@ -178,6 +201,18 @@ export default function CattlePage() {
               {t.registeredBreedsTitle || "पंजीकृत पशु व नस्लें (Registered Breeds)"}
             </h3>
 
+            {isLoading && (
+              <p className="text-center text-xs text-gray-500 dark:text-gray-400 py-6">{t.loadingText}</p>
+            )}
+            {!isLoading && loadError && (
+              <p className="text-center text-xs font-bold text-red-600 dark:text-red-400 py-6">{loadError}</p>
+            )}
+            {!isLoading && !loadError && cattleList.length === 0 && (
+              <p className="text-center text-xs text-gray-500 dark:text-gray-400 py-6">
+                {t.noCattleRegisteredYet || "अभी तक कोई पशु दर्ज नहीं है"}
+              </p>
+            )}
+
             {cattleList.map((item) => (
               <div
                 key={item.id}
@@ -203,7 +238,7 @@ export default function CattlePage() {
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      {item.lactationStage || t.cattleStatusLactating} • ~{item.milkLiters} {t.milkPerDayUnit || "ली/दिन"}
+                      {item.lactation_stage || t.cattleStatusLactating} • ~{item.milk_liters_per_day} {t.milkPerDayUnit || "ली/दिन"}
                     </p>
                   </div>
                 </div>
@@ -256,9 +291,9 @@ export default function CattlePage() {
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "cow",     label: t.cattleCow     || "गाय",  icon: <CowIcon     className="w-8 h-8 mx-auto" /> },
-                      { id: "buffalo", label: t.cattleBuffalo || "भैंस", icon: <BuffaloIcon className="w-8 h-8 mx-auto" /> },
-                      { id: "goat",    label: t.cattleGoat    || "बकरी", icon: <GoatIcon    className="w-8 h-8 mx-auto" /> },
+                      { id: "cow",     label: t.cattleCow     || "गाय",   icon: <CowIcon     className="w-8 h-8 mx-auto" /> },
+                      { id: "buffalo", label: t.cattleBuffalo || "भैंस",  icon: <BuffaloIcon className="w-8 h-8 mx-auto" /> },
+                      { id: "goat",   label: t.cattleGoat    || "बकरी",  icon: <GoatIcon    className="w-8 h-8 mx-auto" /> },
                     ].map((cat) => (
                       <button
                         type="button"

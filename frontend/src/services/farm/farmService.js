@@ -35,6 +35,24 @@ const farmService = {
   getCurrentWeather(latitude, longitude) {
     return apiClient.get('/api/farms/weather/', { params: { lat: latitude, lon: longitude } })
   },
+
+  listCattleGroups() {
+    return apiClient.get('/api/farms/cattle/')
+  },
+
+  createCattleGroup({ category, breed, count, milkLitersPerDay, lactationStage }) {
+    return apiClient.post('/api/farms/cattle/', {
+      category,
+      breed,
+      count,
+      milk_liters_per_day: milkLitersPerDay,
+      lactation_stage: lactationStage,
+    })
+  },
+
+  deleteCattleGroup(groupId) {
+    return apiClient.delete(`/api/farms/cattle/${groupId}/`)
+  },
 }
 
 export default farmService

@@ -9,9 +9,9 @@ from rest_framework.views import APIView
 from weather.client import fetch_current_weather
 from weather.exceptions import WeatherServiceError
 
-from .selectors import get_farm_by_owner
-from .serializers import FarmSerializer
-from .services import create_farm, update_farm
+from .selectors import get_cattle_group_by_id, get_cattle_groups_by_owner, get_farm_by_owner
+from .serializers import CattleGroupSerializer, FarmSerializer
+from .services import create_cattle_group, create_farm, delete_cattle_group, update_farm
 
 
 class MyFarmView(APIView):
@@ -47,6 +47,40 @@ class MyFarmView(APIView):
 
         farm = update_farm(farm=farm, **serializer.validated_data)
         return Response(FarmSerializer(farm).data)
+
+
+class CattleGroupListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=['farms'], responses=CattleGroupSerializer(many=True))
+    def get(self, request):
+        groups = get_cattle_groups_by_owner(owner=request.user)
+        return Response(CattleGroupSerializer(groups, many=True).data)
+
+    @extend_schema(tags=['farms'], request=CattleGroupSerializer, responses=CattleGroupSerializer)
+    def post(self, request):
+        serializer = CattleGroupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            group = create_cattle_group(owner=request.user, **serializer.validated_data)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+
+        return Response(CattleGroupSerializer(group).data, status=status.HTTP_201_CREATED)
+
+
+class CattleGroupDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=['farms'], responses={204: None})
+    def delete(self, request, group_id):
+        group = get_cattle_group_by_id(group_id=group_id)
+        if group is None or group.owner_id != request.user.id:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        delete_cattle_group(group=group)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class WeatherCurrentView(APIView):

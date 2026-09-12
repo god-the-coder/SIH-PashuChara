@@ -2,7 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { translations } from "../constants/translations";
 import authService from "../services/auth/authService";
 import notificationService from "../services/notifications/notificationService";
+import farmService from "../services/farm/farmService";
 import { getApiError } from "../services/api/error";
+import { detectCurrentLocationLabel } from "../utils/geolocation";
 
 const DashboardContext = createContext(null);
 
@@ -84,6 +86,42 @@ export function DashboardProvider({ children }) {
       cancelled = true;
     };
   }, []);
+
+  // 4b. Real farm record (for the real, saved location) + a live GPS fallback
+  // used only until the farmer has a farm location saved on the backend.
+  const [farm, setFarm] = useState(null);
+  const [detectedLocation, setDetectedLocation] = useState("");
+
+  useEffect(() => {
+    if (!authChecked || !user?.isLoggedIn) return;
+    let cancelled = false;
+    farmService
+      .getMyFarm()
+      .then((data) => {
+        if (!cancelled) setFarm(data);
+      })
+      .catch(() => {
+        // Best-effort — the drawer just falls back to the GPS/placeholder label.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authChecked, user?.isLoggedIn]);
+
+  useEffect(() => {
+    if (!authChecked || !user?.isLoggedIn || farm?.location) return;
+    let cancelled = false;
+    detectCurrentLocationLabel()
+      .then((label) => {
+        if (!cancelled && label) setDetectedLocation(label);
+      })
+      .catch(() => {
+        // Permission denied / unsupported / API failure — keep the static placeholder.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authChecked, user?.isLoggedIn, farm?.location]);
 
   // 5. Auth Modal & UI state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -258,6 +296,8 @@ export function DashboardProvider({ children }) {
     setUser(GUEST_USER);
     setNotifications([]);
     setUnreadCount(0);
+    setFarm(null);
+    setDetectedLocation("");
     showToast("सफलतापूर्वक लॉग आउट हो गया 🔒");
   }, [showToast]);
 
@@ -300,6 +340,8 @@ export function DashboardProvider({ children }) {
     setUser(GUEST_USER);
     setNotifications([]);
     setUnreadCount(0);
+    setFarm(null);
+    setDetectedLocation("");
     showToast("खाता व समस्त डेटा स्थायी रूप से हटा दिया गया। 🗑️");
   }, [showToast]);
 
@@ -320,11 +362,7 @@ export function DashboardProvider({ children }) {
     ? (t.drawerGuestAccount || "अतिथि किसान")
     : (isDefaultRamesh ? (t.farmerGreetingName || "रमेश जी") : `${user.name.split(" ")[0]} ${honorific}`);
 
-  const isDefaultLocation = !user?.isCustomLocation && (!user?.location || user.location === "करनाल, हरियाणा" || user.location === "Karnal, Haryana");
-
-  const displayLocation = isDefaultLocation
-    ? (t.defaultFarmLocation || "करनाल, हरियाणा")
-    : (user?.location || t.drawerLocationTag || "आनंद, गुजरात");
+  const displayLocation = farm?.location || detectedLocation || (t.defaultFarmLocation || "करनाल, हरियाणा");
 
   const value = {
     lang,
@@ -341,6 +379,8 @@ export function DashboardProvider({ children }) {
     markNotificationRead,
     user,
     authChecked,
+    farm,
+    setFarm,
     displayName,
     displayRole,
     displayLocation,
