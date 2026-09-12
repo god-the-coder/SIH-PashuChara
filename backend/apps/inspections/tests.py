@@ -437,6 +437,21 @@ class FollowupQuestionServiceTests(TestCase):
         image.image.delete(save=False)
 
     @patch('apps.inspections.services.ai_generate_followup_questions')
+    def test_generate_followup_questions_is_idempotent(self, mock_generate):
+        mock_generate.return_value = ['Any smell?', 'Any mold?']
+        image = add_inspection_image(inspection=self.inspection, image=make_test_image())
+
+        generate_followup_questions(inspection=self.inspection)
+        first_questions = self.inspection.followup_qa
+
+        mock_generate.return_value = ['A completely different question?']
+        generate_followup_questions(inspection=self.inspection)
+
+        self.assertEqual(mock_generate.call_count, 1)
+        self.assertEqual(self.inspection.followup_qa, first_questions)
+        image.image.delete(save=False)
+
+    @patch('apps.inspections.services.ai_generate_followup_questions')
     def test_generate_followup_questions_rejects_when_not_draft(self, mock_generate):
         image = add_inspection_image(inspection=self.inspection, image=make_test_image())
         save_inspection(inspection=self.inspection)

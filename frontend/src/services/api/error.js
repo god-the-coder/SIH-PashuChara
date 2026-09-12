@@ -56,9 +56,22 @@ function getCategory(status, code, isNetworkError) {
 function getBackendMessage(data) {
   if (typeof data === 'string') return data
 
-  if (typeof data === 'object') {
-    const message = data?.detail || data?.message || data?.error
-    return typeof message === 'string' ? message : null
+  if (Array.isArray(data)) {
+    return typeof data[0] === 'string' ? data[0] : null
+  }
+
+  if (data && typeof data === 'object') {
+    const message = data.detail || data.message || data.error
+    if (typeof message === 'string') return message
+    if (Array.isArray(message) && typeof message[0] === 'string') return message[0]
+
+    // DRF field-level validation errors, e.g. {"answers": ["This field is required."]}
+    const firstFieldErrors = Object.values(data)[0]
+    if (Array.isArray(firstFieldErrors) && typeof firstFieldErrors[0] === 'string') {
+      return firstFieldErrors[0]
+    }
+
+    return null
   }
 
   return null
@@ -89,7 +102,7 @@ export function toApiRequestError(error) {
   const status = isAxiosError ? error.response?.status ?? null : null
   const code = isAxiosError ? error.code ?? null : null
   const data = isAxiosError ? error.response?.data ?? null : null
-  const isNetworkError = isAxiosError && Boolean(error.request || code === 'ERR_NETWORK')
+  const isNetworkError = isAxiosError && !error.response && Boolean(error.request || code === 'ERR_NETWORK')
   const category = isAxiosError
     ? getCategory(status, code, isNetworkError)
     : API_ERROR_CATEGORY.UNEXPECTED

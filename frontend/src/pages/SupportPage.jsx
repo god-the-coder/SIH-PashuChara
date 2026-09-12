@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
 import BottomNavBar from "../components/layout/BottomNavBar";
+import { PhoneIcon, SmartphoneIcon, ChatIcon, MicIcon, RefreshIcon, SendIcon, EditIcon, CheckIcon } from "../components/common/Icons";
 
 export default function SupportPage() {
   const navigate = useNavigate();
@@ -34,19 +35,19 @@ export default function SupportPage() {
     setIsRecording(true);
     setRecordSeconds(0);
     setHasRecordedVoice(false);
-    showToast("🎙️ आवाज़ रिकॉर्डिंग शुरू... अपनी समस्या बोलें");
+    showToast("आवाज़ रिकॉर्डिंग शुरू... अपनी समस्या बोलें");
   };
 
   const handleStopRecord = () => {
     setIsRecording(false);
     setHasRecordedVoice(true);
-    showToast("✓ आवाज़ संदेश रिकॉर्ड हो गया (0:" + (recordSeconds < 10 ? "0" : "") + recordSeconds + ")");
+    showToast("आवाज़ संदेश रिकॉर्ड हो गया (0:" + (recordSeconds < 10 ? "0" : "") + recordSeconds + ")");
   };
 
   const handleSendVoiceMessage = () => {
     setHasRecordedVoice(false);
     setRecordSeconds(0);
-    showToast("वॉयस संदेश सहायता केंद्र को भेज दिया गया! 📨");
+    showToast("वॉयस संदेश सहायता केंद्र को भेज दिया गया!");
   };
 
   const handleIssueSubmit = (e) => {
@@ -59,7 +60,7 @@ export default function SupportPage() {
     setTimeout(() => {
       setIsSubmitting(false);
       setIssueText("");
-      showToast("समस्या टिकट #TKT-8492 दर्ज हो गया! 24 घंटे में समाधान मिलेगा ✓");
+      showToast("समस्या टिकट #TKT-8492 दर्ज हो गया! 24 घंटे में समाधान मिलेगा");
     }, 1000);
   };
 
@@ -77,15 +78,16 @@ export default function SupportPage() {
         <main className="p-4 space-y-4 flex-1 overflow-y-auto">
           {/* SECTION 1: Toll-Free & Customer Care Phone Cards */}
           <div className="space-y-2.5">
-            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider px-1">
-              {t.helplineSectionTitle || "📞 किसान हेल्पलाइन नंबर (Helplines)"}
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider px-1 flex items-center gap-1.5">
+              <PhoneIcon className="w-3.5 h-3.5" />
+              <span>{t.helplineSectionTitle || "किसान हेल्पलाइन नंबर (Helplines)"}</span>
             </h3>
 
             {/* 1. Toll Free Number */}
             <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-xl shrink-0 border border-emerald-200/50">
-                  📞
+                <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-[#161914] text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-200/50">
+                  <PhoneIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
@@ -101,18 +103,18 @@ export default function SupportPage() {
               </div>
               <a
                 href="tel:18001801551"
-                className="px-3.5 py-2 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <span>{t.callBtn || "कॉल"}</span>
-                <span>📞</span>
+                <PhoneIcon className="w-3.5 h-3.5" />
               </a>
             </div>
 
             {/* 2. Customer Care Number */}
             <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-[#251f15] text-amber-800 dark:text-amber-300 flex items-center justify-center text-xl shrink-0 border border-amber-200/50">
-                  📱
+                <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-[#251f15] text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0 border border-amber-200/50">
+                  <SmartphoneIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
@@ -128,10 +130,10 @@ export default function SupportPage() {
               </div>
               <a
                 href="tel:18008894040"
-                className="px-3.5 py-2 rounded-xl bg-[#143c20] hover:bg-[#0f2d18] text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl bg-[#143c20] hover:bg-[#0f2d18] text-white text-xs font-black shadow-xs cursor-pointer flex items-center gap-1.5"
               >
                 <span>{t.callBtn || "कॉल"}</span>
-                <span>💬</span>
+                <ChatIcon className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
@@ -140,7 +142,9 @@ export default function SupportPage() {
           <div className="p-4 rounded-3xl bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-[#152618] dark:to-[#222116] border border-[#d2e0d4] dark:border-[#334636] shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🎙️</span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-[#1f2820] flex items-center justify-center shrink-0">
+                  <MicIcon className="w-4 h-4 text-[#064d2c] dark:text-emerald-300" />
+                </div>
                 <div>
                   <h4 className="text-xs font-black text-[#064d2c] dark:text-white">
                     {t.voiceMessageTitle || "आवाज़ संदेश भेजें (Voice Message)"}
@@ -165,7 +169,8 @@ export default function SupportPage() {
                   onClick={handleStartRecord}
                   className="w-full py-2.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
                 >
-                  <span>{t.startRecordBtn || "🎙️ आवाज़ रिकॉर्ड शुरू करें"}</span>
+                  <MicIcon className="w-4 h-4" />
+                  <span>{t.startRecordBtn || "आवाज़ रिकॉर्ड शुरू करें"}</span>
                 </button>
               )}
 
@@ -175,7 +180,8 @@ export default function SupportPage() {
                   onClick={handleStopRecord}
                   className="w-full py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 cursor-pointer animate-pulse"
                 >
-                  <span>{t.stopRecordBtn || "⏹️ रिकॉर्डिंग रोकें (Stop)"}</span>
+                  <span className="w-3 h-3 rounded-xs bg-white" />
+                  <span>{t.stopRecordBtn || "रिकॉर्डिंग रोकें (Stop)"}</span>
                 </button>
               )}
 
@@ -186,7 +192,7 @@ export default function SupportPage() {
                     onClick={handleStartRecord}
                     className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
                   >
-                    🔄
+                    <RefreshIcon className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
@@ -194,7 +200,7 @@ export default function SupportPage() {
                     className="flex-1 py-2 rounded-xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-black shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>{t.sendVoiceNoteBtn || "वॉयस संदेश भेजें (Send Voice Note)"}</span>
-                    <span>📤</span>
+                    <SendIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
@@ -203,8 +209,9 @@ export default function SupportPage() {
 
           {/* SECTION 3: Write or Address Issue Form */}
           <div className="p-4 rounded-3xl bg-white dark:bg-[#181e18] border border-[#ded5c2] dark:border-[#242824] shadow-sm space-y-3">
-            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider">
-              {t.writeIssueTitle || "📝 समस्या दर्ज करें (Address Issue / Write Query)"}
+            <h3 className="text-xs font-black uppercase text-[#064d2c] dark:text-[#a8cfb4] tracking-wider flex items-center gap-1.5">
+              <EditIcon className="w-3.5 h-3.5" />
+              <span>{t.writeIssueTitle || "समस्या दर्ज करें (Address Issue / Write Query)"}</span>
             </h3>
 
             <form onSubmit={handleIssueSubmit} className="space-y-3">
@@ -246,7 +253,7 @@ export default function SupportPage() {
                 className="w-full py-3.5 rounded-2xl bg-[#2D5A3D] hover:bg-[#1E442B] text-white text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-transform active:scale-95"
               >
                 <span>{isSubmitting ? (t.listeningText || "कृपया प्रतीक्षा करें...") : (t.submitIssueBtn || "शिकायत / प्रश्न दर्ज करें")}</span>
-                <span className="text-sm">✓</span>
+                <CheckIcon className="w-4 h-4" />
               </button>
             </form>
           </div>

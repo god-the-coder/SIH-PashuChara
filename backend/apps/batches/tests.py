@@ -10,7 +10,10 @@ from apps.inspections.services import add_inspection_image, create_draft_inspect
 
 from .permissions import IsBatchOwner
 from .selectors import get_batch_by_code, get_batch_by_id, list_batches_by_owner
-from .services import create_batch_from_inspection, ensure_batch_for_inspection, generate_batch_qr_png, update_batch
+from .services import (
+    build_batch_report_url, create_batch_from_inspection, ensure_batch_for_inspection, generate_batch_qr_png,
+    update_batch,
+)
 
 
 def make_test_image():
@@ -100,6 +103,20 @@ class BatchServiceTests(TestCase):
         batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
         png_bytes = generate_batch_qr_png(batch=batch)
         self.assertTrue(png_bytes.startswith(b'\x89PNG'))
+
+    def test_build_batch_report_url_is_a_public_frontend_link(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        url = build_batch_report_url(batch=batch)
+        self.assertEqual(url, f'http://localhost:5173/report/{batch.batch_code}')
+
+    @patch('apps.batches.services.qrcode.make')
+    def test_generate_batch_qr_png_encodes_report_url_not_bare_code(self, mock_make):
+        mock_make.return_value.save = lambda buffer, format: buffer.write(b'\x89PNG\r\n\x1a\n')
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+
+        generate_batch_qr_png(batch=batch)
+
+        mock_make.assert_called_once_with(f'http://localhost:5173/report/{batch.batch_code}')
 
 
 class IsBatchOwnerPermissionTests(TestCase):
@@ -259,6 +276,26 @@ class BatchApiTests(TestCase):
         response = self.client.get(f'/api/batches/by-code/{batch.batch_code}/')
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data['latest_result'])
+
+    def test_public_report_accessible_without_authentication(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+
+        response = self.client.get(f'/api/batches/public/{batch.batch_code}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['batch_code'], batch.batch_code)
+        self.assertNotIn('owner', response.data)
+
+    def test_public_report_accessible_by_a_different_logged_in_user(self):
+        batch = create_batch_from_inspection(inspection=make_inspection(self.owner))
+        self.client.force_authenticate(user=self.other)
+
+        response = self.client.get(f'/api/batches/public/{batch.batch_code}/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_public_report_404_for_unknown_code(self):
+        response = self.client.get('/api/batches/public/PC-NOTREAL1/')
+        self.assertEqual(response.status_code, 404)
 
     def test_resolve_by_code_denies_other_user(self):
         batch = create_batch_from_inspection(inspection=make_inspection(self.owner))

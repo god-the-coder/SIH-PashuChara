@@ -5,18 +5,6 @@ import SubPageHeader from "../components/layout/SubPageHeader";
 import { useDashboard } from "../context/DashboardContext";
 import batchService from "../services/batches/batchService";
 
-const LOCAL_REPORT_IDS = new Set(["PC-9482", "PC-9411", "PC-9380"]);
-
-function reportIdFromUrl(value) {
-  try {
-    const url = new URL(value);
-    const match = url.pathname.match(/^\/history\/([^/]+)\/report\/?$/);
-    return url.origin === window.location.origin && match ? decodeURIComponent(match[1]) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function QrReportScannerPage() {
   const navigate = useNavigate();
   const { showToast } = useDashboard();
@@ -36,25 +24,35 @@ export default function QrReportScannerPage() {
 
   useEffect(() => () => stopScanner(), []);
 
+  // QR codes now encode a full report URL (e.g. https://app/report/PC-XXXX)
+  // rather than a bare code, so a plain phone camera can open them directly —
+  // pull the batch code back out whether it's a URL or (from manual entry /
+  // older QR codes) a bare code.
+  const extractBatchCode = (value) => {
+    const trimmed = value.replace(/^batch:/i, "").trim();
+    try {
+      const url = new URL(trimmed);
+      return decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || trimmed);
+    } catch {
+      return trimmed;
+    }
+  };
+
   const openReport = async (rawValue) => {
     const value = rawValue.trim();
     if (!value) return;
 
-    const localReportId = reportIdFromUrl(value) || (LOCAL_REPORT_IDS.has(value) ? value : null);
-    if (localReportId) {
-      stopScanner();
-      navigate(`/history/${encodeURIComponent(localReportId)}/report`);
-      return;
-    }
+    const batchCode = extractBatchCode(value);
+    if (!batchCode) return;
 
-    const batchCode = value.replace(/^batch:/i, "").trim();
-    setMessage("Looking up saved report…");
+    setMessage("Looking up report…");
     try {
-      const batch = await batchService.resolveByCode(batchCode);
+      const batch = await batchService.getPublicReport(batchCode);
+      if (!batch) throw new Error("No report found for this QR code.");
       stopScanner();
-      navigate(`/qr-report/batch/${encodeURIComponent(batch.batch_code)}`, { state: { batch } });
+      navigate(`/report/${encodeURIComponent(batch.batch_code)}`, { state: { batch } });
     } catch (error) {
-      const detail = error?.message || "No saved report found for this QR code.";
+      const detail = error?.message || "No report found for this QR code.";
       setMessage(detail);
       showToast(detail);
       handledRef.current = false;

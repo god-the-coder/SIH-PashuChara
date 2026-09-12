@@ -174,6 +174,14 @@ def generate_followup_questions(*, inspection):
     if inspection.status != InspectionStatus.DRAFT:
         raise ValidationError('Follow-up questions can only be generated for a draft inspection.')
 
+    # Idempotent by design: this is called once from the questionnaire page's mount
+    # effect, and a second call for the same draft (a re-render, a duplicate
+    # request, a remount) must return the same set rather than re-rolling Gemini's
+    # non-deterministic output — otherwise the answers the farmer already typed
+    # against the first set stop matching the question count stored here.
+    if inspection.followup_qa:
+        return inspection
+
     images = read_inspection_images(inspection=inspection)
     if not images:
         raise ValidationError('At least one image is required before generating follow-up questions.')

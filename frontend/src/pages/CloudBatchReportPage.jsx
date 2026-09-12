@@ -14,7 +14,10 @@ export default function CloudBatchReportPage() {
 
   useEffect(() => {
     if (batch) return;
-    batchService.resolveByCode(batchCode).then(setBatch).catch((requestError) => setError(requestError?.message || "Saved report not found."));
+    batchService
+      .getPublicReport(batchCode)
+      .then((result) => (result ? setBatch(result) : setError("No report found for this code.")))
+      .catch((requestError) => setError(requestError?.message || "Report not found."));
   }, [batch, batchCode]);
 
   if (error) return <div className="grid min-h-screen place-items-center p-6 text-center text-sm text-gray-600">{error}</div>;

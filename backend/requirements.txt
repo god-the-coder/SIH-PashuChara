@@ -15,10 +15,9 @@ Pillow>=10.4.0
 opencv-python-headless>=4.9.0
 numpy>=1.26.0
 
-# AI
-google-genai>=1.0.0,<2.0.0
+# AI (Groq vision-capable chat completions, via requests below)
 
-# Weather
+# Weather / AI HTTP client
 requests>=2.31.0
 
 # QR codes

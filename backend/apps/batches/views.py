@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -81,5 +81,24 @@ class BatchResolveByCodeView(APIView):
         if batch is None:
             raise NotFound('No batch found for this code.')
         self.check_object_permissions(request, batch)
+
+        return Response(BatchSummarySerializer(batch).data)
+
+
+class PublicBatchReportView(APIView):
+    """The QR-code destination: no login required, since whoever scans a
+    batch's QR in the physical world (a buyer, a vet, anyone) isn't
+    necessarily the farmer who owns the account. Deliberately reuses
+    BatchSummarySerializer, which only exposes batch/result fields — no
+    owner identity or contact details — so this is safe to leave public."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(tags=['batches'], operation_id='batches_public_report', responses=BatchSummarySerializer)
+    def get(self, request, batch_code):
+        batch = get_batch_by_code(batch_code=batch_code)
+        if batch is None:
+            raise NotFound('No report found for this code.')
 
         return Response(BatchSummarySerializer(batch).data)

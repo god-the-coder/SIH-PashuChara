@@ -2,6 +2,7 @@ import io
 import secrets
 
 import qrcode
+from django.conf import settings
 
 from .models import Batch
 
@@ -51,8 +52,14 @@ def update_batch(*, batch, batch_label=None, quantity_kg=None):
     return batch
 
 
+def build_batch_report_url(*, batch):
+    """The public, unauthenticated report page for this batch — what a phone's
+    native camera app should land on when it scans the batch's QR code."""
+    return f'{settings.FRONTEND_URL}/report/{batch.batch_code}'
+
+
 def generate_batch_qr_png(*, batch):
-    image = qrcode.make(batch.batch_code)
+    image = qrcode.make(build_batch_report_url(batch=batch))
     buffer = io.BytesIO()
     image.save(buffer, format='PNG')
     return buffer.getvalue()

@@ -172,9 +172,14 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# Gemini AI (visual inspection analysis)
-GEMINI_KEY = os.getenv('GEMINI_KEY', '')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+# Groq AI (visual inspection analysis — vision-capable chat completions)
+GROQ_KEY = os.getenv('GROQ_KEY', '')
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'qwen/qwen3.6-27b')
 
 # OpenWeatherMap (inspection environmental context)
 OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')
+
+# Public web origin the frontend is served from — used to build the URL
+# embedded in a batch's QR code (see apps.batches.services.generate_batch_qr_png)
+# so scanning it with any camera app opens the public report page directly.
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')

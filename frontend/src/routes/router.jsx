@@ -81,7 +81,7 @@ export const router = createBrowserRouter([
         element: <QrReportScannerPage />,
       },
       {
-        path: '/qr-report/batch/:batchCode',
+        path: '/report/:batchCode',
         element: <CloudBatchReportPage />,
       },
       {

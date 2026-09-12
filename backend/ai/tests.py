@@ -7,52 +7,53 @@ from .exceptions import AIServiceError
 from .risk_engine import classify_risk, default_recommendations_for_category
 
 
-@override_settings(GEMINI_KEY='test-key', GEMINI_MODEL='test-model')
+@override_settings(GROQ_KEY='test-key', GROQ_MODEL='test-model')
 class GenerateJsonTests(SimpleTestCase):
-    def setUp(self):
-        ai_client._client = None
-        self.addCleanup(setattr, ai_client, '_client', None)
+    def _mock_post(self, text, status_code=200):
+        mock_response = MagicMock(status_code=status_code, ok=status_code < 400)
+        mock_response.json.return_value = {'choices': [{'message': {'content': text}}]}
+        return mock_response
 
-    def _mock_response(self, text):
-        mock_client = MagicMock()
-        mock_client.models.generate_content.return_value = MagicMock(text=text)
-        return mock_client
+    def _mock_error_post(self, status_code, message):
+        mock_response = MagicMock(status_code=status_code, ok=False, text=message)
+        mock_response.json.return_value = {'error': {'message': message}}
+        return mock_response
 
     def test_raises_without_api_key(self):
-        with override_settings(GEMINI_KEY=''):
+        with override_settings(GROQ_KEY=''):
             with self.assertRaises(AIServiceError):
-                ai_client._get_client()
+                ai_client._generate_json(prompt='p', images=[], max_tokens=10, expect_object=False)
 
-    @patch('ai.client.genai.Client')
-    def test_generate_followup_questions_parses_list(self, mock_genai_client):
-        mock_genai_client.return_value = self._mock_response('["Any smell?", "Any mold?"]')
+    @patch('ai.client.requests.post')
+    def test_generate_followup_questions_parses_list(self, mock_post):
+        mock_post.return_value = self._mock_post('["Any smell?", "Any mold?"]')
         questions = ai_client.generate_followup_questions(
             inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
             storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
         )
         self.assertEqual(questions, ['Any smell?', 'Any mold?'])
 
-    @patch('ai.client.genai.Client')
-    def test_generate_followup_questions_rejects_non_list(self, mock_genai_client):
-        mock_genai_client.return_value = self._mock_response('{"not": "a list"}')
+    @patch('ai.client.requests.post')
+    def test_generate_followup_questions_rejects_non_list(self, mock_post):
+        mock_post.return_value = self._mock_post('{"not": "a list"}')
         with self.assertRaises(AIServiceError):
             ai_client.generate_followup_questions(
                 inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
                 storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
             )
 
-    @patch('ai.client.genai.Client')
-    def test_analyze_material_rejects_missing_keys(self, mock_genai_client):
-        mock_genai_client.return_value = self._mock_response('{"summary": "ok"}')
+    @patch('ai.client.requests.post')
+    def test_analyze_material_rejects_missing_keys(self, mock_post):
+        mock_post.return_value = self._mock_post('{"summary": "ok"}')
         with self.assertRaises(AIServiceError):
             ai_client.analyze_material(
                 inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
                 storage_duration_days=10, followup_qa=[], images=[(b'fake', 'image/jpeg')],
             )
 
-    @patch('ai.client.genai.Client')
-    def test_analyze_material_parses_valid_response(self, mock_genai_client):
-        mock_genai_client.return_value = self._mock_response(
+    @patch('ai.client.requests.post')
+    def test_analyze_material_parses_valid_response(self, mock_post):
+        mock_post.return_value = self._mock_post(
             '{"summary": "ok", "headline": "fine", "confidence": 80, "indicators": []}',
         )
         data = ai_client.analyze_material(
@@ -61,25 +62,79 @@ class GenerateJsonTests(SimpleTestCase):
         )
         self.assertEqual(data['headline'], 'fine')
 
-    @patch('ai.client.genai.Client')
-    def test_invalid_json_raises_ai_service_error(self, mock_genai_client):
-        mock_genai_client.return_value = self._mock_response('not json')
+    @patch('ai.client.requests.post')
+    def test_analyze_material_strips_markdown_json_fence(self, mock_post):
+        mock_post.return_value = self._mock_post(
+            '```json\n{"summary": "ok", "headline": "fine", "confidence": 80, "indicators": []}\n```',
+        )
+        data = ai_client.analyze_material(
+            inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
+            storage_duration_days=10, followup_qa=[], images=[(b'fake', 'image/jpeg')],
+        )
+        self.assertEqual(data['headline'], 'fine')
+
+    @patch('ai.client.requests.post')
+    def test_generate_followup_questions_ignores_trailing_chatter(self, mock_post):
+        mock_post.return_value = self._mock_post(
+            '["Any smell?", "Any mold?"]\n\nLet me know if you need anything else!',
+        )
+        questions = ai_client.generate_followup_questions(
+            inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
+            storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
+        )
+        self.assertEqual(questions, ['Any smell?', 'Any mold?'])
+
+    @patch('ai.client.requests.post')
+    def test_invalid_json_raises_ai_service_error(self, mock_post):
+        mock_post.return_value = self._mock_post('not json')
         with self.assertRaises(AIServiceError):
             ai_client.generate_followup_questions(
                 inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
                 storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
             )
 
-    @patch('ai.client.genai.Client')
-    def test_provider_exception_wrapped_as_ai_service_error(self, mock_genai_client):
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = RuntimeError('network down')
-        mock_genai_client.return_value = mock_client
+    @patch('ai.client.requests.post')
+    def test_provider_exception_wrapped_as_ai_service_error(self, mock_post):
+        import requests
+        mock_post.side_effect = requests.ConnectionError('network down')
         with self.assertRaises(AIServiceError):
             ai_client.generate_followup_questions(
                 inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
                 storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
             )
+
+    @patch('ai.client.requests.post')
+    def test_http_error_surfaces_groq_error_message(self, mock_post):
+        mock_post.return_value = self._mock_error_post(
+            400, 'Too many images provided.  This model supports up to 3 images',
+        )
+        with self.assertRaisesMessage(AIServiceError, 'Too many images'):
+            ai_client.generate_followup_questions(
+                inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
+                storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
+            )
+
+
+class CapImagesTests(SimpleTestCase):
+    def test_caps_plain_list_at_three(self):
+        images = [(b'a', 'image/jpeg'), (b'b', 'image/jpeg'), (b'c', 'image/jpeg'), (b'd', 'image/jpeg')]
+        capped, primary_count = ai_client._cap_images(images)
+        self.assertEqual(capped, images[:3])
+        self.assertIsNone(primary_count)
+
+    def test_keeps_primaries_before_supplementary(self):
+        primary = [(b'p1', 'image/jpeg'), (b'p2', 'image/jpeg'), (b'p3', 'image/jpeg'), (b'p4', 'image/jpeg')]
+        supplementary = [(b's1', 'image/jpeg'), (b's2', 'image/jpeg')]
+        capped, primary_count = ai_client._cap_images(primary + supplementary, primary_count=len(primary))
+        self.assertEqual(capped, primary[:3])
+        self.assertEqual(primary_count, 3)
+
+    def test_fills_remaining_slots_with_supplementary(self):
+        primary = [(b'p1', 'image/jpeg')]
+        supplementary = [(b's1', 'image/jpeg'), (b's2', 'image/jpeg'), (b's3', 'image/jpeg')]
+        capped, primary_count = ai_client._cap_images(primary + supplementary, primary_count=len(primary))
+        self.assertEqual(capped, primary + supplementary[:2])
+        self.assertEqual(primary_count, 1)
 
 
 class ClassifyRiskTests(SimpleTestCase):
