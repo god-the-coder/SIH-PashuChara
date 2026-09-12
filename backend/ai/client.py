@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 
 from .exceptions import AIServiceError
-from .prompts import build_analysis_prompt, build_followup_questions_prompt
+from .prompts import build_analysis_prompt, build_capture_guidance_prompt, build_followup_questions_prompt
 
 GEMINI_API_URL_TEMPLATE = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 
@@ -88,7 +88,10 @@ def _generate_json(*, prompt, images):
             except Exception:
                 detail = response.text
             last_error_detail = f'{response.status_code} {detail}'
-            if response.status_code == 503 and model != models_to_try[-1]:
+            # 503 = model overloaded, 429 = this model's free-tier quota exhausted —
+            # both are worth retrying on the other model, since each has its own
+            # separate free-tier quota bucket.
+            if response.status_code in (503, 429) and model != models_to_try[-1]:
                 continue
             raise AIServiceError(f'Gemini request failed: {last_error_detail}')
 
@@ -123,6 +126,18 @@ def generate_followup_questions(
         raise AIServiceError('Expected a JSON array of question strings.')
 
     return data
+
+
+def generate_capture_guidance(*, step_label, step_description, image, language='en'):
+    prompt = build_capture_guidance_prompt(
+        step_label=step_label, step_description=step_description, language=language,
+    )
+    data = _generate_json(prompt=prompt, images=[image])
+
+    if not isinstance(data, dict) or 'is_good' not in data or 'feedback' not in data:
+        raise AIServiceError('Expected a JSON object with is_good and feedback.')
+
+    return {'is_good': bool(data['is_good']), 'feedback': str(data['feedback'])}
 
 
 def analyze_material(

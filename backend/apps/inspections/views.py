@@ -18,6 +18,7 @@ from .models import Inspection, InspectionStatus
 from .permissions import IsInspectionOwner
 from .selectors import get_inspection_image_by_id, list_inspections_by_owner
 from .serializers import (
+    CaptureGuidanceRequestSerializer,
     CreateInspectionSerializer,
     FollowupAnswersSerializer,
     InspectionContextSerializer,
@@ -28,6 +29,7 @@ from .services import (
     add_inspection_image,
     create_draft_inspection,
     delete_inspection_image,
+    generate_capture_guidance,
     generate_followup_questions,
     save_inspection,
     submit_followup_answers,
@@ -111,6 +113,32 @@ class InspectionImageUploadView(APIView):
             raise ValidationError(exc.messages)
 
         return Response(InspectionImageSerializer(image).data, status=status.HTTP_201_CREATED)
+
+
+class InspectionImageGuidanceView(APIView):
+    permission_classes = [IsAuthenticated, IsInspectionOwner]
+
+    @extend_schema(
+        tags=['inspections'], operation_id='inspections_images_guidance',
+        request=CaptureGuidanceRequestSerializer, responses=None,
+    )
+    def post(self, request, pk, image_id):
+        inspection = get_object_or_404(Inspection, pk=pk)
+        self.check_object_permissions(request, inspection)
+
+        image = get_inspection_image_by_id(inspection=inspection, image_id=image_id)
+        if image is None:
+            raise Http404
+
+        serializer = CaptureGuidanceRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            guidance = generate_capture_guidance(image=image, **serializer.validated_data)
+        except AIServiceError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(guidance)
 
 
 class InspectionImageDetailView(APIView):

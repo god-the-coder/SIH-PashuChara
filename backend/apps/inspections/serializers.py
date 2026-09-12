@@ -30,6 +30,12 @@ class InspectionSerializer(serializers.ModelSerializer):
         )
 
 
+class CaptureGuidanceRequestSerializer(serializers.Serializer):
+    language = serializers.ChoiceField(
+        choices=['hi', 'en', 'mr', 'gu', 'kn', 'ta'], required=False, default='en',
+    )
+
+
 class CreateInspectionSerializer(serializers.Serializer):
     inspection_type = serializers.ChoiceField(choices=Inspection._meta.get_field('inspection_type').choices)
     material_type = serializers.ChoiceField(choices=Inspection._meta.get_field('material_type').choices)

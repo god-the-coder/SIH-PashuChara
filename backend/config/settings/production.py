@@ -19,3 +19,9 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Render (and most PaaS hosts) terminate TLS at their edge proxy and forward
+# plain HTTP internally — without these, Django can't tell a request was
+# actually HTTPS, which breaks secure-cookie logic and CSRF checks.
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

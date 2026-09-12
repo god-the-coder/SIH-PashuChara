@@ -38,6 +38,10 @@ const inspectionService = {
     return apiClient.delete(`/api/inspections/${inspectionId}/images/${imageId}/`);
   },
 
+  getCaptureGuidance(inspectionId, imageId, language) {
+    return apiClient.post(`/api/inspections/${inspectionId}/images/${imageId}/guidance/`, { language });
+  },
+
   generateQuestions(inspectionId) {
     return apiClient.post(`/api/inspections/${inspectionId}/questions/`);
   },

@@ -1,3 +1,26 @@
+_GUIDANCE_LANGUAGE_NAMES = {
+    'hi': 'Hindi', 'en': 'English', 'mr': 'Marathi',
+    'gu': 'Gujarati', 'kn': 'Kannada', 'ta': 'Tamil',
+}
+
+
+def build_capture_guidance_prompt(*, step_label, step_description, language='en'):
+    language_name = _GUIDANCE_LANGUAGE_NAMES.get(language, 'English')
+    return (
+        'You are a live camera assistant helping an Indian farmer photograph animal feed/silage for a '
+        'quality inspection app. The farmer just captured the photo attached below for this step:\n\n'
+        f'Step: {step_label}\n'
+        f'What this photo needs to show: {step_description}\n\n'
+        'Judge ONLY the photo\'s capture quality — framing, distance, lighting, focus/blur, and whether the '
+        "required subject is actually visible — never the material's condition or quality (that is a separate "
+        'analysis). Respond with ONLY a JSON object of this exact shape (no other text):\n'
+        '{\n'
+        '  "is_good": <true if this photo is usable as-is, false if the farmer should retake it>,\n'
+        f'  "feedback": "one short, encouraging, actionable sentence in {language_name}, written in simple '
+        'words a farmer would understand"\n'
+        '}'
+    )
+
 def _context_block(*, inspection_type, material_type, material_type_other, storage_duration_days):
     material = material_type_other if material_type == 'OTHER' and material_type_other else material_type
     return (

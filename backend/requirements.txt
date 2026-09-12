@@ -23,3 +23,10 @@ requests>=2.31.0
 
 # QR codes
 qrcode[pil]>=7.4.0
+
+# Multilingual support (services/translation_service.py)
+googletrans==4.0.2
+
+# Production deployment (Render)
+gunicorn>=22.0.0
+whitenoise>=6.7.0

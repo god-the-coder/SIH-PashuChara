@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
+from ai.client import generate_capture_guidance as ai_generate_capture_guidance
 from ai.client import generate_followup_questions as ai_generate_followup_questions
 from apps.notifications.services import notify_weather_alert
 from imaging.exceptions import ImageProcessingError, ImageValidationError
@@ -71,6 +72,44 @@ def add_inspection_image(*, inspection, image, image_type=ImageType.FRONT_GENERA
     )
     inspection_image.save()
     return inspection_image
+
+
+_CAPTURE_STEP_GUIDANCE = {
+    ImageType.FRONT_GENERAL: (
+        'Front Overview',
+        'The entire fodder pile or storage pit fits inside the frame, taken from 3-4 feet back.',
+    ),
+    ImageType.SIDE_DEPTH: (
+        'Side Layers',
+        'A side or cut profile showing depth and the different layers of the material.',
+    ),
+    ImageType.MACRO: (
+        'Macro Texture',
+        'A close-up (6-10 inches away) showing fine texture, leaves, and any mold or moisture.',
+    ),
+    ImageType.STORAGE: (
+        'Storage Environment',
+        'The storage area itself — flooring, roofing, tarp cover, and signs of moisture or damage.',
+    ),
+}
+
+
+def generate_capture_guidance(*, image, language='en'):
+    """Live feedback on ONE just-captured photo's capture quality (framing/lighting/
+    focus) — distinct from generate_followup_questions/analyze_material, which judge
+    the material itself. Called right after each photo upload, not blocking it.
+    """
+    step_label, step_description = _CAPTURE_STEP_GUIDANCE.get(
+        image.image_type, ('General', 'The subject is clearly visible, in focus, and well lit.'),
+    )
+    with image.image.open('rb') as file:
+        data = file.read()
+    mime_type = mimetypes.guess_type(image.image.name)[0] or 'image/jpeg'
+
+    return ai_generate_capture_guidance(
+        step_label=step_label, step_description=step_description,
+        image=(data, mime_type), language=language,
+    )
 
 
 def delete_inspection_image(*, inspection, image):

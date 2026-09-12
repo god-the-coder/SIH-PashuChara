@@ -75,7 +75,7 @@ export default function NewInspectionPage() {
   const [searchParams] = useSearchParams();
   const fodderType = searchParams.get("type") || "silage";
   const batchId = searchParams.get("batchId");
-  const { t, showToast } = useDashboard();
+  const { t, lang, showToast } = useDashboard();
 
   const [inspectionId, setInspectionId] = useState(null);
   const [isCreating, setIsCreating] = useState(true);
@@ -84,6 +84,8 @@ export default function NewInspectionPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([null, null, null, null]);
   const [uploadingStep, setUploadingStep] = useState(null);
+  const [checkingStep, setCheckingStep] = useState(null);
+  const [captureFeedback, setCaptureFeedback] = useState({});
   const [isVoiceActive, setIsVoiceActive] = useState(true);
   const [cameraStatus, setCameraStatus] = useState("idle"); // "idle" | "requesting" | "ready" | "error"
   const [cameraFacing, setCameraFacing] = useState("environment");
@@ -161,18 +163,38 @@ export default function NewInspectionPage() {
   const voiceGuidanceMessages = [t.voiceStep1, t.voiceStep2, t.voiceStep3, t.voiceStep4];
 
   const uploadStepImage = async (file) => {
-    setUploadingStep(currentStep);
+    const stepAtCapture = currentStep;
+    setUploadingStep(stepAtCapture);
+    setCaptureFeedback((prev) => ({ ...prev, [stepAtCapture]: null }));
+
+    let image;
     try {
-      const image = await inspectionService.uploadImage(inspectionId, file, IMAGE_TYPES[currentStep]);
+      image = await inspectionService.uploadImage(inspectionId, file, IMAGE_TYPES[stepAtCapture]);
       const updated = [...capturedImages];
-      updated[currentStep] = { id: image.id, previewUrl: URL.createObjectURL(file) };
+      updated[stepAtCapture] = { id: image.id, previewUrl: URL.createObjectURL(file) };
       setCapturedImages(updated);
-      showToast(t.photoSavedToast.replace("{n}", currentStep + 1));
-      if (currentStep < 3) setCurrentStep((s) => s + 1);
+      showToast(t.photoSavedToast.replace("{n}", stepAtCapture + 1));
     } catch (apiError) {
       showToast(apiError.message || t.errPhotoUploadFailed);
-    } finally {
       setUploadingStep(null);
+      return;
+    }
+    setUploadingStep(null);
+
+    // Live AI capture-quality check — a nice-to-have that critiques framing/focus/
+    // lighting on the photo just taken. Never blocks the flow: if it fails (AI
+    // quota, network), fall back to auto-advancing like before.
+    setCheckingStep(stepAtCapture);
+    try {
+      const guidance = await inspectionService.getCaptureGuidance(inspectionId, image.id, lang);
+      setCaptureFeedback((prev) => ({ ...prev, [stepAtCapture]: guidance }));
+      if (guidance.is_good !== false && stepAtCapture < 3) {
+        setCurrentStep((s) => (s === stepAtCapture ? stepAtCapture + 1 : s));
+      }
+    } catch {
+      if (stepAtCapture < 3) setCurrentStep((s) => (s === stepAtCapture ? stepAtCapture + 1 : s));
+    } finally {
+      setCheckingStep(null);
     }
   };
 
@@ -286,6 +308,7 @@ export default function NewInspectionPage() {
       const updated = [...capturedImages];
       updated[currentStep] = null;
       setCapturedImages(updated);
+      setCaptureFeedback((prev) => ({ ...prev, [currentStep]: null }));
       showToast(t.photoRemovedToast);
       startCamera(cameraFacing);
     } catch (apiError) {
@@ -395,8 +418,15 @@ export default function NewInspectionPage() {
                   {t.aiGuidanceLabel || "लाइव सहायक सुझाव:"}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
-                  {voiceGuidanceMessages[currentStep]}
+                  {checkingStep === currentStep
+                    ? (t.aiCheckingPhoto || "AI फोटो की जांच कर रहा है...")
+                    : captureFeedback[currentStep]?.feedback || voiceGuidanceMessages[currentStep]}
                 </p>
+                {captureFeedback[currentStep]?.is_good === false && (
+                  <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mt-1">
+                    {t.retakeSuggestedLabel || "कृपया फोटो दोबारा लें"}
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -497,7 +527,7 @@ export default function NewInspectionPage() {
           <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => galleryInputRef.current?.click()}
-              disabled={uploadingStep !== null}
+              disabled={uploadingStep !== null || checkingStep !== null}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm disabled:opacity-60"
             >
               <IcoGallery />
@@ -507,7 +537,7 @@ export default function NewInspectionPage() {
             <button
               id="shutterBtn"
               onClick={handleCameraCapture}
-              disabled={uploadingStep !== null}
+              disabled={uploadingStep !== null || checkingStep !== null}
               className="w-16 h-16 rounded-full p-1 shadow-xl border-4 border-white dark:border-[#252525] flex items-center justify-center transition-transform active:scale-90 cursor-pointer disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #059652, #10b96a)" }}
             >
@@ -516,7 +546,7 @@ export default function NewInspectionPage() {
 
             <button
               onClick={handleRetake}
-              disabled={uploadingStep !== null || !capturedImages[currentStep]}
+              disabled={uploadingStep !== null || checkingStep !== null || !capturedImages[currentStep]}
               className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm disabled:opacity-60"
             >
               <IcoRetake />
