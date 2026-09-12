@@ -1,10 +1,13 @@
 import base64
 import concurrent.futures
 import json
+import logging
 import re
 
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 from .exceptions import AIServiceError
 from .prompts import (
@@ -137,7 +140,7 @@ def _generate_json(*, prompt, images, api_key=None):
                         'Content-Type': 'application/json',
                     },
                     json=payload,
-                    timeout=60,
+                    timeout=25,
                 )
             except requests.RequestException as exc:
                 last_error_detail = str(exc)
@@ -149,7 +152,7 @@ def _generate_json(*, prompt, images, api_key=None):
                 except Exception:
                     detail = response.text
                 last_error_detail = f'{response.status_code} {detail}'
-                # 503 = overloaded, 502/500 = transient, 429 = quota limit, 404 = preview rename
+                # 503 = overloaded, 502/500 = transient, 429 = quota limit, 404 = model rename
                 if response.status_code in (503, 502, 500, 429, 404):
                     continue
                 # Other error on this key, try next key
@@ -310,10 +313,14 @@ def analyze_material(
     # Parallel Computing: Shard photos across distinct API keys concurrently
     def _analyze_shard(idx, img_tuple):
         key = keys_pool[idx % len(keys_pool)]
+        masked_key = f"{key[:8]}...{key[-4:]}"
+        logger.info(f"[Parallel AI Worker {idx+1}] Processing photo {idx+1}/{len(images)} on Key: {masked_key}")
         try:
-            return _generate_json(prompt=prompt, images=[img_tuple], api_key=key)
-        except Exception:
-            # Fallback retry with full pool
+            res = _generate_json(prompt=prompt, images=[img_tuple], api_key=key)
+            logger.info(f"[Parallel AI Worker {idx+1}] Shard {idx+1} successfully completed on Key: {masked_key}")
+            return res
+        except Exception as e:
+            logger.warning(f"[Parallel AI Worker {idx+1}] Key {masked_key} failed: {e}. Retrying with pool...")
             return _generate_json(prompt=prompt, images=[img_tuple])
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(images), 4)) as executor:
