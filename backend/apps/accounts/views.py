@@ -112,19 +112,32 @@ class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
     @method_decorator(ensure_csrf_cookie)
-    @extend_schema(tags=['accounts'], request=GoogleAuthSerializer, responses=UserSerializer)
+    @extend_schema(
+        tags=['accounts'],
+        request=GoogleAuthSerializer,
+        responses=UserSerializer,
+        description=(
+            "Authenticate via Google Sign-In. "
+            "**Production (Render):** send `id_token` (the raw JWT from the Google SDK) — "
+            "the backend verifies it against GOOGLE_CLIENT_ID. "
+            "**Dev fallback:** send `email` + `google_id` directly when GOOGLE_CLIENT_ID is unset."
+        ),
+    )
     def post(self, request):
         serializer = GoogleAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email'].strip()
-        google_id = serializer.validated_data.get('google_id', '').strip()
-        full_name = serializer.validated_data.get('full_name', '').strip()
-        avatar_url = serializer.validated_data.get('avatar_url', '')
+
+        id_token     = serializer.validated_data.get('id_token', '').strip()
+        email        = serializer.validated_data.get('email', '').strip()
+        google_id    = serializer.validated_data.get('google_id', '').strip()
+        full_name    = serializer.validated_data.get('full_name', '').strip()
+        avatar_url   = serializer.validated_data.get('avatar_url', '')
 
         try:
             user = authenticate_or_create_google_user(
-                email=email,
-                google_id=google_id,
+                id_token=id_token or None,
+                email=email or None,
+                google_id=google_id or None,
                 full_name=full_name,
                 avatar_url=avatar_url,
             )

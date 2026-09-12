@@ -209,3 +209,10 @@ OPENWEATHER_KEY = os.getenv('OPENWEATHER_KEY', '')
 # embedded in a batch's QR code (see apps.batches.services.generate_batch_qr_png)
 # so scanning it with any camera app opens the public report page directly.
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')
+
+# Google OAuth2 — used to verify ID tokens from the frontend Google Sign-In SDK.
+# Set this in your Render environment variables to the OAuth 2.0 Client ID from
+# Google Cloud Console → APIs & Services → Credentials.
+# Without this, the backend falls back to accepting raw email/google_id from the
+# client (development only — insecure for production).
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')

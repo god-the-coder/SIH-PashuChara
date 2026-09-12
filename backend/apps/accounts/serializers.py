@@ -52,7 +52,15 @@ class VerifyOTPSerializer(serializers.Serializer):
 
 
 class GoogleAuthSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    """
+    Accepts the raw Google ID token from the frontend (Firebase / Google Sign-In SDK).
+    The backend verifies it server-side — no plain email/google_id trust from the client.
+    Falls back to accepting email+google_id directly only when GOOGLE_CLIENT_ID is not configured
+    (development / testing convenience).
+    """
+    id_token = serializers.CharField(required=False, allow_blank=True, help_text="Google ID token from frontend SDK")
+    # Legacy / dev-only fields — used when id_token is absent and GOOGLE_CLIENT_ID not set
+    email = serializers.EmailField(required=False, allow_blank=True)
     google_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
     full_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     avatar_url = serializers.CharField(required=False, allow_blank=True)
