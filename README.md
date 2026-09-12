@@ -10,11 +10,11 @@
   <img src="https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript" />
+  <img src="https://img.shields.io/badge/Offline_Voice_Engine-008080?style=for-the-badge&logo=soundcharts&logoColor=white" alt="Offline Voice Engine" />
   <img src="https://img.shields.io/badge/Python_3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Django_REST-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django" />
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/PWA_Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA" />
+  <img src="https://img.shields.io/badge/PWA_Offline--First-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA" />
 </p>
 
 ---
@@ -56,9 +56,11 @@ Every day, millions of small dairy farmers face serious challenges with cattle f
 
 ---
 
-### 2. 🎙️ 100% Typeless Voice Assistant (Zero Typing Needed)
-- **How It Works:** The app talks directly to the farmer in their native language (**Hindi, English, Marathi, Gujarati, Kannada, Tamil**). It reads out simple questions one by one (*"Does the feed smell sour or rotten?"*). The moment the question finishes, the phone microphone automatically turns on and listens. The farmer simply speaks their answer, and the app fills it in automatically.
-- **Why It Is Useful:** The farmer never has to type a single letter. Even farmers who cannot read or write can complete a full assessment with their hands free while working in the shed.
+### 2. 🎙️ 100% Typeless Voice Assistant (Self-Made Offline Voice Engine)
+- **How It Works:** The entire screen reading and voice interaction is powered by our **custom-built, on-device offline voice engine—completely independent of external voice APIs**. It operates 100% locally on the phone. It reads questions out loud in the farmer's native dialect (**Hindi, English, Marathi, Gujarati, Kannada, Tamil**). The moment the screen-reading finishes, the microphone turns on automatically. The farmer speaks their answer, and the app fills it in hands-free.
+- **Why It Is Useful:** 
+  - Zero external API lag or cost; works with zero cellular signal in the shed.
+  - Farmers never type a single word. Even farmers who cannot read or write can complete a full assessment with their hands free while handling feed.
 
 ---
 
@@ -72,7 +74,7 @@ Every day, millions of small dairy farmers face serious challenges with cattle f
 ---
 
 ### 4. 📴 Complete Offline Dependability
-- **How It Works:** When there is no internet connection in the cattle shed, the app keeps running normally. It saves photos on the phone, conducts the voice questionnaire, uses a built-in lightweight model on the phone to give an immediate assessment, and saves the record. As soon as the farmer enters an area with internet, the app automatically uploads the record to the cloud.
+- **How It Works:** When there is no internet connection in the cattle shed, the app keeps running normally. It saves photos on the phone, conducts the voice questionnaire using the **self-made offline voice engine**, uses a built-in lightweight model on the phone to give an immediate assessment, and saves the record. As soon as the farmer enters an area with internet, the app automatically uploads the record to the cloud.
 - **Why It Is Useful:** The app never freezes or shows "Network Error" in rural sheds. It works anywhere, anytime.
 
 ---
@@ -111,7 +113,7 @@ flowchart TD
     HUDCheck -->|No| VoiceWarning[Spoken Audio Tip: 'Too dark', 'Move closer']
     VoiceWarning --> CameraHUD
     HUDCheck -->|Yes| Capture[Capture 4-Angle Fodder Photos]
-    Capture --> VoiceQ[Voice Questionnaire: Question Spoken aloud -> Mic auto-listens]
+    Capture --> VoiceQ[Offline Voice Engine: Screen-reads question -> Mic auto-listens]
     VoiceQ --> Upload[Upload Images & Answers to Cloud Backend]
     Upload --> CloudAI[Cloud AI Analysis: Color, Mold, Texture, Moisture + Weather Fusion]
     CloudAI --> Report[Generate Clinical Report + Verifiable QR Code]
@@ -119,7 +121,7 @@ flowchart TD
 
     %% OFFLINE PATH
     ConnCheck -->|No - Offline| OffCam[Offline Camera Capture]
-    OffCam --> OffVoice[Offline Voice Assistant via Local Web Speech]
+    OffCam --> OffVoice[Offline Voice Engine: 100% Local Screen Read & Speech Capture]
     OffVoice --> LocalInference[On-Device Lightweight Model Inference]
     LocalInference --> LocalRating[Immediate On-Device Safety Triage]
     LocalRating --> SaveLocal[(Save to Local Phone Storage IndexedDB)]
@@ -135,56 +137,96 @@ flowchart TD
 
 ## 🏗 System Architecture
 
+The system follows a clean, 4-tier vertical architecture designed for high readability, responsive aspect ratio, and seamless online/offline resilience:
+
 ```mermaid
-graph TB
-    subgraph ClientLayer ["1. CLIENT TIER (Farmer's Smartphone)"]
-        PWA["Progressive Web App (React 18 + Vite)"]
-        CamView["Camera & Real-Time Viewfinder HUD"]
-        VoiceModule["Voice Engine (TTS Speech + Auto-Mic STT)"]
-        LocalDB[("Local Storage - IndexedDB")]
-        EdgeModel["On-Device Lightweight ML Model"]
-        SyncWorker["Service Worker (Offline Caching & Background Sync)"]
+flowchart TD
+    subgraph Tier1 ["📱 1. CLIENT TIER (Farmer's Smartphone)"]
+        direction TB
+        App["PWA Frontend (React 18 + Vite)"]
+        OfflineVoice["🔊 Self-Made Offline Voice Engine<br/>(Zero API Dependency • Screen Read & Auto-Mic)"]
+        ViewfinderHUD["📷 Smart Camera & Live Viewfinder Guidance"]
+        EdgeModel["🧠 On-Device Edge Safety Model"]
+        LocalStore[("💾 Local IndexedDB Storage")]
     end
 
-    subgraph GatewayLayer ["2. NETWORK & SECURITY GATEWAY"]
-        HTTPS["HTTPS / TLS 1.3 Encryption"]
-        JWT["Authentication Guard (Phone OTP / Google OAuth2)"]
+    subgraph Tier2 ["🔄 2. RESILIENT SYNC & SECURITY GATEWAY"]
+        direction TB
+        Worker["Service Worker Background Sync Agent"]
+        AuthSecurity["Secure HTTPS / JWT Auth Guard"]
     end
 
-    subgraph BackendLayer ["3. BACKEND SERVICES (Django REST Framework)"]
-        AuthService["Accounts & Farm Registry"]
-        InspectService["Inspection & Batch Manager"]
-        QRService["Tamper-Proof QR Code Generator"]
-        WeatherService["Agro-Meteorological Spoilage Engine"]
+    subgraph Tier3 ["⚙️ 3. BACKEND SERVICES (Django REST Framework)"]
+        direction TB
+        APIGateway["Core REST API Gateway"]
+        InspectionEngine["Inspection & Batch Manager"]
+        WeatherEngine["Agro-Meteorological Spoilage Fusion"]
+        QRGenerator["Tamper-Proof QR Code Generator"]
     end
 
-    subgraph DataAILayer ["4. CLOUD DATA & AI TIER"]
-        CloudAI["Multimodal Cloud Vision AI Engine"]
-        PostgresDB[("Encrypted PostgreSQL Database")]
+    subgraph Tier4 ["☁️ 4. CLOUD AI & PERSISTENCE TIER"]
+        direction TB
+        CloudVision["Multimodal Cloud Vision AI Engine"]
+        Database[("🗄️ Encrypted PostgreSQL Database")]
     end
 
-    %% Flow connections
-    PWA --> CamView
-    PWA --> VoiceModule
-    PWA --> SyncWorker
+    %% Client internal flow
+    App --> ViewfinderHUD
+    App --> OfflineVoice
+    App -.->|Offline Mode| EdgeModel
+    EdgeModel --> LocalStore
+    App --> LocalStore
 
-    %% Offline handling
-    PWA -.->|Offline Mode| EdgeModel
-    EdgeModel -.-> LocalDB
-    SyncWorker -.->|Network Restores| HTTPS
+    %% Offline sync flow
+    LocalStore -.->|Network Reconnects| Worker
+    Worker --> AuthSecurity
 
-    %% Online handling
-    CamView --> HTTPS
-    VoiceModule --> HTTPS
-    HTTPS --> JWT
-    JWT --> AuthService
-    JWT --> InspectService
-    
-    InspectService --> CloudAI
-    InspectService --> WeatherService
-    InspectService --> QRService
-    InspectService --> PostgresDB
-    AuthService --> PostgresDB
+    %% Online flow
+    ViewfinderHUD --> AuthSecurity
+    OfflineVoice --> AuthSecurity
+    AuthSecurity --> APIGateway
+
+    %% Backend internal dispatch
+    APIGateway --> InspectionEngine
+    InspectionEngine --> CloudVision
+    InspectionEngine --> WeatherEngine
+    InspectionEngine --> QRGenerator
+    InspectionEngine --> Database
+```
+
+### 📐 Structural Blueprint (Clean Layout View)
+
+```
+===================================================================================
+1. CLIENT TIER (Farmer's Smartphone - Offline First)
+   ├── PWA Mobile App (React 18 + Vite + Tailwind CSS)
+   ├── 🔊 Self-Made Offline Voice Engine (Custom Screen Reader & Speech-to-Text)
+   ├── 📷 Live Viewfinder HUD (Real-time clarity & lighting guidance)
+   ├── 🧠 On-Device Edge ML Safety Model (Instant offline triage)
+   └── 💾 Local Sandboxed Storage (IndexedDB for offline images & logs)
+===================================================================================
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              ▼ (When Offline)                                ▼ (When Online)
+   Local Edge Model Inference & Saved              Direct HTTPS / TLS 1.3 Transport
+   to IndexedDB Phone Storage.                     Protected by JWT & OTP Guard
+   Auto-Syncs via Service Worker later.                        │
+                                                               ▼
+===================================================================================
+2. BACKEND SERVICES TIER (Django REST Framework)
+   ├── Authentication & Farm Registry Service
+   ├── Inspection, Cattle & Batch Management Engine
+   ├── Agro-Meteorological Spoilage Fusion (Heat + Humidity)
+   └── Tamper-Proof QR Code & Lab Report Generator
+===================================================================================
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              ▼                                               ▼
+=======================================       =====================================
+3. CLOUD AI ENGINE                            4. DATABASE TIER
+   Multimodal Deep Vision Triage                 Encrypted PostgreSQL Relational DB
+   (Color, Mold, Texture, Moisture)              (Users, Batches, Farms, Results)
+=======================================       =====================================
 ```
 
 ---
@@ -195,7 +237,7 @@ graph TB
 | :--- | :--- | :--- |
 | **Frontend Core** | ![React](https://img.shields.io/badge/React_18-20232A?style=flat&logo=react&logoColor=61DAFB) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white) | Ultra-fast single-page responsive application |
 | **Styling** | ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white) | High-contrast, mobile-first design with large touch targets |
-| **Voice & Audio** | ![Web Speech](https://img.shields.io/badge/Web_Speech_API-4285F4?style=flat&logo=google&logoColor=white) | Natural voice questions and hands-free spoken replies |
+| **Voice & Screen Read** | ![Self-Made Voice](https://img.shields.io/badge/Offline_Voice_Engine-008080?style=flat) | **Custom, self-made offline voice engine (Zero external API dependency, 100% on-device screen reading & speech capture)** |
 | **Offline Engine** | ![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=flat&logo=pwa&logoColor=white) ![IndexedDB](https://img.shields.io/badge/IndexedDB-F80000?style=flat) | Zero-connectivity operation & background data sync |
 | **Backend API** | ![Django](https://img.shields.io/badge/Django_REST-092E20?style=flat&logo=django&logoColor=white) ![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=flat&logo=python&logoColor=white) | Robust, secure REST endpoints and business logic |
 | **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white) | Scalable, encrypted relational data store |
@@ -209,7 +251,7 @@ graph TB
 | :--- | :--- | :--- |
 | **Opening & Using the App** | Opens instantly | Opens instantly from phone cache |
 | **Taking Pictures** | Camera with live feedback checks | Camera with built-in clarity checks |
-| **Voice Questions** | App speaks and listens in chosen language | App speaks and listens in chosen language |
+| **Voice & Screen Reading** | **Self-made offline voice engine** | **Self-made offline voice engine (Zero API needed)** |
 | **Testing Result** | Comprehensive cloud quality analysis | On-device safety triage |
 | **Saving Data** | Saved immediately to cloud database | Saved securely on phone memory |
 | **Syncing** | Real-time | Auto-syncs to cloud as soon as network returns |
