@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
 
+from ai.client import generate_breed_feeding_guidance as ai_generate_breed_feeding_guidance
+
 from .models import CattleGroup, Farm
 from .selectors import get_farm_by_owner
 
@@ -42,3 +44,19 @@ def create_cattle_group(*, owner, category, breed, count=1, milk_liters_per_day=
 
 def delete_cattle_group(*, group):
     group.delete()
+
+
+def generate_breed_feeding_guidance(*, cattle_groups, language='en'):
+    """AI-written, breed-specific feeding guidance for the farmer's actual
+    registered animals — never shown when there are none (see the view)."""
+    groups_payload = [
+        {
+            'category': group.get_category_display(),
+            'breed': group.breed,
+            'count': group.count,
+            'milk_liters_per_day': group.milk_liters_per_day,
+            'lactation_stage': group.lactation_stage,
+        }
+        for group in cattle_groups
+    ]
+    return ai_generate_breed_feeding_guidance(cattle_groups=groups_payload, language=language)

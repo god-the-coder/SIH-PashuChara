@@ -53,8 +53,8 @@ export default function RegisterPage() {
         <main className="p-5 my-auto">
           <div className="bg-white dark:bg-[#181e18] text-[#1c1c15] dark:text-[#f3ede2] p-6 rounded-3xl border border-[#ded5c2] dark:border-[#28382d] shadow-sm">
             <div className="text-center mb-5">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-[#1a3324] text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50 flex items-center justify-center text-2xl mx-auto mb-2.5 shadow-inner">
-                👨‍🌾
+              <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-300 dark:border-emerald-700/50 overflow-hidden flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+                <img src="/app-logo.png" alt="PashuChara AI" className="w-full h-full object-cover" />
               </div>
               <h2 className="text-xl font-black text-[#14351d] dark:text-white">
                 {t.registerCardTitle}

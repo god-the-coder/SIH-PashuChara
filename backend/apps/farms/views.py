@@ -6,12 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ai.exceptions import AIServiceError
 from weather.client import fetch_current_weather
 from weather.exceptions import WeatherServiceError
 
 from .selectors import get_cattle_group_by_id, get_cattle_groups_by_owner, get_farm_by_owner
 from .serializers import CattleGroupSerializer, FarmSerializer
-from .services import create_cattle_group, create_farm, delete_cattle_group, update_farm
+from .services import (
+    create_cattle_group, create_farm, delete_cattle_group, generate_breed_feeding_guidance, update_farm,
+)
 
 
 class MyFarmView(APIView):
@@ -81,6 +84,28 @@ class CattleGroupDetailView(APIView):
 
         delete_cattle_group(group=group)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BreedFeedingGuidanceView(APIView):
+    """AI-written feeding guidance for the farmer's actual registered cattle —
+    returns 404 when none are registered, so the frontend can hide the section
+    entirely rather than show generic/static advice."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=['farms'], parameters=[OpenApiParameter('lang', str, required=False)])
+    def get(self, request):
+        cattle_groups = get_cattle_groups_by_owner(owner=request.user)
+        if not cattle_groups:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        language = request.query_params.get('lang', 'en')
+        try:
+            guidance = generate_breed_feeding_guidance(cattle_groups=cattle_groups, language=language)
+        except AIServiceError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(guidance)
 
 
 class WeatherCurrentView(APIView):

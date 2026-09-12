@@ -10,11 +10,15 @@ const BUFFALO_BREEDS = ["मुर्राह (Murrah)", "जाफराबा
 const GOAT_BREEDS = ["बरबरी (Barbari)", "सिरोही (Sirohi)", "जमुनापारी (Jamunapari)", "बीटल (Beetal)"];
 
 export default function CattlePage() {
-  const { t, showToast } = useDashboard();
+  const { t, lang, showToast } = useDashboard();
 
   const [cattleList, setCattleList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+
+  const [feedingGuidance, setFeedingGuidance] = useState(null);
+  const [isGuidanceLoading, setIsGuidanceLoading] = useState(false);
+  const [guidanceError, setGuidanceError] = useState("");
 
   const [isListening, setIsListening] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,6 +49,31 @@ export default function CattlePage() {
       cancelled = true;
     };
   }, []);
+
+  // AI-written feeding guidance for the farmer's actual registered breeds —
+  // re-fetched whenever the cattle list changes. Hidden entirely (not shown
+  // with a generic fallback) when there is no cattle registered yet.
+  useEffect(() => {
+    if (isLoading || cattleList.length === 0) return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsGuidanceLoading(true);
+    setGuidanceError("");
+    farmService
+      .getBreedFeedingGuidance(lang)
+      .then((data) => {
+        if (!cancelled) setFeedingGuidance(data);
+      })
+      .catch((apiError) => {
+        if (!cancelled) setGuidanceError(apiError.message || t.errFeedingGuidanceFailed);
+      })
+      .finally(() => {
+        if (!cancelled) setIsGuidanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, cattleList, lang, t.errFeedingGuidanceFailed]);
 
   // Voice dictation is simulated (no real speech parsing yet) — the recognized
   // entry below is still saved through the real cattle-group endpoint.
@@ -254,16 +283,24 @@ export default function CattlePage() {
             ))}
           </div>
 
-          {/* Feeding Advice */}
-          <div className="p-4 rounded-3xl bg-[#0f3821] text-white shadow-md border border-emerald-600/30 space-y-2">
-            <span className="text-xs font-black uppercase text-emerald-300 tracking-wider flex items-center gap-1.5">
-              <ClipboardIcon className="w-4 h-4 text-emerald-300 shrink-0" />
-              <span>{t.breedFeedingAdviceTitle || "नस्ल अनुसार आहार आवश्यकता"}</span>
-            </span>
-            <p className="text-xs text-emerald-100/90 leading-relaxed">
-              {t.breedFeedingAdviceText || "गिर और साहीवाल गायों के लिए प्रति पशु 18-22 कि.ग्रा. साइलेज व 4 कि.ग्रा. दाना मिश्रण अनुशंसित है।"}
-            </p>
-          </div>
+          {/* AI Feeding Advice — only shown when the farmer has cattle/breeds registered */}
+          {cattleList.length > 0 && (
+            <div className="p-4 rounded-3xl bg-[#0f3821] text-white shadow-md border border-emerald-600/30 space-y-2">
+              <span className="text-xs font-black uppercase text-emerald-300 tracking-wider flex items-center gap-1.5">
+                <ClipboardIcon className="w-4 h-4 text-emerald-300 shrink-0" />
+                <span>{t.breedFeedingAdviceTitle || "नस्ल अनुसार आहार आवश्यकता"}</span>
+              </span>
+              {isGuidanceLoading ? (
+                <p className="text-xs text-emerald-100/70">{t.loadingText}</p>
+              ) : guidanceError ? (
+                <p className="text-xs text-red-300">{guidanceError}</p>
+              ) : (
+                <p className="text-xs text-emerald-100/90 leading-relaxed">
+                  {feedingGuidance?.guidance}
+                </p>
+              )}
+            </div>
+          )}
         </main>
 
         {/* Add Cattle Modal */}

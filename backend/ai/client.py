@@ -6,7 +6,10 @@ import requests
 from django.conf import settings
 
 from .exceptions import AIServiceError
-from .prompts import build_analysis_prompt, build_capture_guidance_prompt, build_followup_questions_prompt
+from .prompts import (
+    build_analysis_prompt, build_breed_feeding_guidance_prompt, build_capture_guidance_prompt,
+    build_followup_questions_prompt,
+)
 
 GEMINI_API_URL_TEMPLATE = 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
 
@@ -138,6 +141,16 @@ def generate_capture_guidance(*, step_label, step_description, image, language='
         raise AIServiceError('Expected a JSON object with is_good and feedback.')
 
     return {'is_good': bool(data['is_good']), 'feedback': str(data['feedback'])}
+
+
+def generate_breed_feeding_guidance(*, cattle_groups, language='en'):
+    prompt = build_breed_feeding_guidance_prompt(cattle_groups=cattle_groups, language=language)
+    data = _generate_json(prompt=prompt, images=[])
+
+    if not isinstance(data, dict) or 'guidance' not in data:
+        raise AIServiceError('Expected a JSON object with guidance.')
+
+    return {'guidance': str(data['guidance'])}
 
 
 def analyze_material(

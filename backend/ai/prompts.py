@@ -21,6 +21,28 @@ def build_capture_guidance_prompt(*, step_label, step_description, language='en'
         '}'
     )
 
+def build_breed_feeding_guidance_prompt(*, cattle_groups, language='en'):
+    language_name = _GUIDANCE_LANGUAGE_NAMES.get(language, 'English')
+    groups_lines = '\n'.join(
+        f'- {group["count"]}x {group["breed"]} ({group["category"]}), '
+        f'{group["milk_liters_per_day"]} L/day milk yield, lactation stage: {group["lactation_stage"] or "not specified"}'
+        for group in cattle_groups
+    )
+    return (
+        'You are a livestock nutrition advisor for Indian dairy farmers using a fodder/feed quality app. '
+        "The farmer has registered the following animals on their farm:\n\n"
+        f'{groups_lines}\n\n'
+        'Write practical, breed-specific daily feeding guidance covering silage/green fodder and concentrate '
+        '(dana mixture) quantities per animal, tailored to these specific breeds, their milk yield and lactation '
+        'stage. Base it on real dairy husbandry practice for these breeds in India. Keep it concrete (include kg '
+        'quantities) and actionable, 2-4 sentences total, grouped by breed if there is more than one. '
+        f'Respond with ONLY a JSON object of this exact shape (no other text):\n'
+        '{\n'
+        f'  "guidance": "the feeding guidance, written in {language_name}, in simple words a farmer would understand"\n'
+        '}'
+    )
+
+
 def _context_block(*, inspection_type, material_type, material_type_other, storage_duration_days):
     material = material_type_other if material_type == 'OTHER' and material_type_other else material_type
     return (

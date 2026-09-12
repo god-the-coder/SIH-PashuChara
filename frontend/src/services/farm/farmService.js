@@ -53,6 +53,17 @@ const farmService = {
   deleteCattleGroup(groupId) {
     return apiClient.delete(`/api/farms/cattle/${groupId}/`)
   },
+
+  async getBreedFeedingGuidance(language) {
+    try {
+      return await apiClient.get('/api/farms/cattle/feeding-guidance/', { params: { lang: language } })
+    } catch (error) {
+      const apiError = getApiError(error)
+      // No cattle registered yet is a normal state — hide the section, not an error.
+      if (apiError.status === 404) return null
+      throw apiError
+    }
+  },
 }
 
 export default farmService
