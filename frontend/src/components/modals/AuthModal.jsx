@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDashboard } from "../../context/DashboardContext";
-import { WheatIcon, LockIcon, UserIcon, CloseIcon, CheckIcon } from "../common/Icons";
+import { WheatIcon, LockIcon, UserIcon, CowIcon, CloseIcon, CheckIcon } from "../common/Icons";
 
 export default function AuthModal() {
   const { authModalOpen, authModalStep, closeAuthModal, login, showToast, t } = useDashboard();

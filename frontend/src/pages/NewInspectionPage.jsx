@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
@@ -40,6 +40,11 @@ const IcoRetake = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
   </svg>
 );
+const FlipCameraIcon = () => (
+  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+  </svg>
+);
 const IcoMic = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
@@ -73,7 +78,14 @@ export default function NewInspectionPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([null, null, null, null]);
   const [isVoiceActive, setIsVoiceActive] = useState(true);
-  const fileInputRef = useRef(null);
+  const [cameraStatus, setCameraStatus] = useState("idle"); // "idle" | "requesting" | "ready" | "error"
+  const [cameraFacing, setCameraFacing] = useState("environment");
+  const [isFlashing, setIsFlashing] = useState(false);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   const isSilage = fodderType === "silage";
 
@@ -91,15 +103,78 @@ export default function NewInspectionPage() {
     t.voiceStep4 || "Now show the storage shed, floor, and covering.",
   ];
 
-  const handleCaptureSimulated = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 400; canvas.height = 300;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = currentStep === 3 ? "#8d7960" : currentStep === 2 ? "#4f6e52" : "#3b5840";
-    ctx.fillRect(0, 0, 400, 300);
-    ctx.fillStyle = "#ffffff"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(steps[currentStep].englishTitle, 200, 150);
-    saveStepImage(canvas.toDataURL("image/jpeg"));
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraStatus("idle");
+  }, []);
+
+  const startCamera = useCallback(async (facing = cameraFacing) => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setCameraStatus("error");
+      return;
+    }
+    setCameraStatus("requesting");
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(() => {});
+        };
+      }
+      setCameraStatus("ready");
+    } catch (err) {
+      console.warn("Camera getUserMedia error:", err);
+      setCameraStatus("error");
+    }
+  }, [cameraFacing]);
+
+  // Start camera when entering an uncaptured step
+  useEffect(() => {
+    if (!capturedImages[currentStep]) {
+      startCamera(cameraFacing);
+    }
+  }, [currentStep, capturedImages, startCamera, cameraFacing]);
+
+  // Make sure video srcObject binds whenever video element renders
+  useEffect(() => {
+    if (videoRef.current && streamRef.current && !capturedImages[currentStep]) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  });
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+    setCameraFacing(nextFacing);
+    startCamera(nextFacing);
   };
 
   const handleFileUpload = (e) => {
@@ -109,6 +184,8 @@ export default function NewInspectionPage() {
       reader.onload = (ev) => saveStepImage(ev.target.result);
       reader.readAsDataURL(file);
     }
+    // reset input so same file can be chosen again
+    e.target.value = "";
   };
 
   const saveStepImage = (dataUrl) => {
@@ -117,6 +194,41 @@ export default function NewInspectionPage() {
     setCapturedImages(updated);
     showToast((t.photoCapturedSuccess || "Photo saved") + " " + (currentStep + 1));
     if (currentStep < 3) setCurrentStep(s => s + 1);
+  };
+
+  const handleCameraCapture = () => {
+    // If live video is active, snap photo directly from camera stream
+    if (videoRef.current && cameraStatus === "ready" && videoRef.current.videoWidth > 0) {
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 180);
+      try {
+        const video = videoRef.current;
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+        saveStepImage(dataUrl);
+        return;
+      } catch (err) {
+        console.warn("Canvas capture error, falling back to camera input:", err);
+      }
+    }
+    // Fallback: dedicated camera capture
+    cameraInputRef.current?.click();
+  };
+
+  const handleGalleryOpen = () => {
+    galleryInputRef.current?.click();
+  };
+
+  const handleRetake = () => {
+    const updated = [...capturedImages];
+    updated[currentStep] = null;
+    setCapturedImages(updated);
+    showToast(t.photoRemovedToast || "Photo cleared");
+    startCamera(cameraFacing);
   };
 
   const handleProceedToQuestions = () => {
@@ -199,19 +311,44 @@ export default function NewInspectionPage() {
           )}
 
           {/* Camera viewfinder */}
-          <div className="relative flex-1 rounded-2xl overflow-hidden bg-[#1a1f1a] border border-[#2a302a] shadow-xl flex flex-col justify-between min-h-[240px]">
+          <div className="relative flex-1 rounded-2xl overflow-hidden bg-[#0d120e] border border-[#2a302a] shadow-xl flex flex-col justify-between min-h-[260px]">
             {/* Step info overlay */}
             <div className="relative z-10 m-3 p-3 rounded-xl bg-black/60 backdrop-blur-sm text-white">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-black">{step.title}</span>
-                <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">{step.englishTitle}</span>
+                <div className="flex items-center gap-2">
+                  {!capturedImages[currentStep] && cameraStatus === "ready" && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-black text-emerald-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      LIVE
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">{step.englishTitle}</span>
+                </div>
               </div>
               <p className="text-[11px] text-gray-200 leading-snug">{step.desc}</p>
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <IcoTip />
-                <p className="text-[11px] text-amber-200 font-semibold">{step.hint}</p>
+              <div className="flex items-center justify-between mt-1.5">
+                <div className="flex items-center gap-1.5">
+                  <IcoTip />
+                  <p className="text-[11px] text-amber-200 font-semibold">{step.hint}</p>
+                </div>
+                {!capturedImages[currentStep] && (
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all cursor-pointer"
+                    title="Flip camera"
+                  >
+                    <FlipCameraIcon />
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Shutter flash effect */}
+            {isFlashing && (
+              <div className="absolute inset-0 z-30 bg-white/80 pointer-events-none transition-opacity duration-150" />
+            )}
 
             {capturedImages[currentStep] ? (
               <div className="absolute inset-0 z-0">
@@ -222,10 +359,55 @@ export default function NewInspectionPage() {
                 </div>
               </div>
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-44 h-36 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center">
-                  <div className="text-white/25 scale-[2.5]">{(() => { const Icon = STEP_ICONS[currentStep]; return <Icon />; })()}</div>
-                </div>
+              <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-black">
+                {/* Live video feed */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${cameraStatus === "ready" ? "opacity-100" : "opacity-0"}`}
+                />
+
+                {/* Framing guides */}
+                {cameraStatus === "ready" && (
+                  <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex items-center justify-center">
+                    <div className="w-16 h-16 border-2 border-emerald-400/40 rounded-lg" />
+                  </div>
+                )}
+
+                {/* Loading state */}
+                {cameraStatus === "requesting" && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-black/70 text-white gap-2">
+                    <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs font-semibold">Opening camera...</p>
+                  </div>
+                )}
+
+                {/* Error or Fallback state */}
+                {cameraStatus === "error" && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-[#141814] text-white gap-2.5">
+                    <div className="w-12 h-12 rounded-full bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <IcoCamera />
+                    </div>
+                    <p className="text-xs font-bold text-gray-200 max-w-[220px]">Live stream unavailable</p>
+                    <p className="text-[10px] text-gray-400 max-w-[220px]">Use camera button below to take photo directly</p>
+                    <button
+                      type="button"
+                      onClick={() => startCamera(cameraFacing)}
+                      className="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-semibold text-emerald-300 cursor-pointer"
+                    >
+                      Retry Camera
+                    </button>
+                  </div>
+                )}
+
+                {/* Idle / Unstarted placeholder */}
+                {cameraStatus === "idle" && (
+                  <div className="w-44 h-36 border-2 border-dashed border-white/20 rounded-2xl flex items-center justify-center">
+                    <div className="text-white/25 scale-[2.5]">{(() => { const Icon = STEP_ICONS[currentStep]; return <Icon />; })()}</div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -236,36 +418,53 @@ export default function NewInspectionPage() {
               ))}
             </div>
 
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            {/* Dedicated Camera Input (Fallback) */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            {/* Dedicated Gallery Input */}
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
           </div>
 
           {/* Shutter controls */}
           <div className="flex items-center justify-between gap-3">
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm"
+              type="button"
+              id="galleryBtn"
+              onClick={handleGalleryOpen}
+              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm active:scale-95"
             >
               <IcoGallery />
               <span className="text-[10px] font-semibold">{t.fromGalleryBtn || "Gallery"}</span>
             </button>
 
             <button
+              type="button"
               id="shutterBtn"
-              onClick={handleCaptureSimulated}
-              className="w-16 h-16 rounded-full p-1 shadow-xl border-4 border-white dark:border-[#252525] flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+              onClick={handleCameraCapture}
+              aria-label="Take photo"
+              className="w-16 h-16 rounded-full p-1 shadow-xl border-4 border-white dark:border-[#252525] flex items-center justify-center transition-transform active:scale-90 cursor-pointer hover:brightness-110"
               style={{ background: "linear-gradient(135deg, #059652, #10b96a)" }}
             >
               <IcoCamera />
             </button>
 
             <button
-              onClick={() => {
-                const updated = [...capturedImages];
-                updated[currentStep] = null;
-                setCapturedImages(updated);
-                showToast(t.photoRemovedToast || "Photo cleared");
-              }}
-              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm"
+              type="button"
+              id="retakeBtn"
+              onClick={handleRetake}
+              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-white dark:bg-[#141614] border border-[#e8e2d8] dark:border-[#252525] text-gray-500 dark:text-gray-300 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-[#1a1c1a] shadow-sm active:scale-95"
             >
               <IcoRetake />
               <span className="text-[10px] font-semibold">{t.retakeBtn || "Retake"}</span>
