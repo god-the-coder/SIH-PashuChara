@@ -554,7 +554,9 @@ export default function NewInspectionPage() {
                     </p>
                     {captureFeedback[currentStep]?.issue && captureFeedback[currentStep]?.issue !== "good" && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        {captureFeedback[currentStep].issue === "blurry"
+                        {captureFeedback[currentStep].issue === "human_detected"
+                          ? (t.issueHuman || "इंसान / Person in Frame")
+                          : captureFeedback[currentStep].issue === "blurry"
                           ? (t.issueBlurry || "धुंधला / Blurry")
                           : captureFeedback[currentStep].issue === "not_feed"
                           ? (t.issueNotFeed || "चारा नहीं है / Not Feed")
