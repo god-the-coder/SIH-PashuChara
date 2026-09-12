@@ -1,9 +1,10 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
 import SubPageHeader from "../components/layout/SubPageHeader";
-import { MicIcon, MicOffIcon, CheckIcon, SparklesIcon, SendIcon, ClipboardIcon } from "../components/common/Icons";
+import { MicIcon, MicOffIcon, CheckIcon, SparklesIcon, SendIcon, ClipboardIcon, SpeakerIcon } from "../components/common/Icons";
 import { getActiveBatch } from "../utils/batchStore";
+import { useTTS } from "../hooks/useTTS";
 
 const getQuestions = (t) => [
   {
@@ -88,7 +89,8 @@ function useVoice(onResult) {
 
 export default function AiQuestionnairePage() {
   const navigate = useNavigate();
-  const { t, showToast } = useDashboard();
+  const { t, lang, isVoiceOn, showToast } = useDashboard();
+  const { speak, stop: stopTTS, toggleSpeak, isSpeaking } = useTTS();
   const activeBatch = getActiveBatch();
   const questions   = getQuestions(t);
 
@@ -112,9 +114,22 @@ export default function AiQuestionnairePage() {
     }
   });
 
-  useEffect(() => { setTextDraft(""); }, [step]);
+  useEffect(() => {
+    setTextDraft("");
+    if (currentQ?.question) {
+      const timer = setTimeout(() => {
+        speak(currentQ.question, lang);
+      }, 350);
+      return () => {
+        clearTimeout(timer);
+        stopTTS();
+      };
+    }
+    return () => stopTTS();
+  }, [step, currentQ?.question, lang, speak, stopTTS]);
 
   const handleNext = () => {
+    stopTTS();
     if (currentQ.type === "text") {
       if (!textDraft.trim()) { showToast("Please write or speak your answer"); return; }
       setAnswers((prev) => ({ ...prev, [currentQ.id]: textDraft.trim() }));
@@ -182,16 +197,32 @@ export default function AiQuestionnairePage() {
 
         <main className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="bg-white dark:bg-[#1a1f1a] rounded-3xl border border-[#ded5c4] dark:border-[#2b352b] shadow-sm p-4 space-y-4">
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] flex items-center justify-center shrink-0 mt-0.5">
-                <ClipboardIcon className="w-4 h-4 text-white" />
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-start gap-2.5 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-[#2D5A3D] flex items-center justify-center shrink-0 mt-0.5">
+                  <ClipboardIcon className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black text-[#064d2c] dark:text-white leading-snug">{currentQ.question}</h2>
+                  {currentQ.hint && (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{currentQ.hint}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-black text-[#064d2c] dark:text-white leading-snug">{currentQ.question}</h2>
-                {currentQ.hint && (
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{currentQ.hint}</p>
-                )}
-              </div>
+              <button
+                type="button"
+                id="listen-ai-q-btn"
+                onClick={() => toggleSpeak(`${currentQ.question}. ${currentQ.hint || ""}`, lang)}
+                aria-label="प्रश्न सुनें"
+                className={`p-2 rounded-xl border transition-all cursor-pointer shrink-0 ${
+                  isSpeaking
+                    ? "bg-emerald-700 text-white border-emerald-700 animate-pulse ring-2 ring-emerald-400"
+                    : "bg-[#faf7f0] dark:bg-[#141814] text-emerald-800 dark:text-emerald-300 border-[#ded5c2] dark:border-[#242824] hover:bg-emerald-50"
+                }`}
+                title={lang === "en" ? "Listen to question" : "प्रश्न सुनें"}
+              >
+                <SpeakerIcon className="w-4 h-4" />
+              </button>
             </div>
 
             {currentQ.type === "mcq" && (

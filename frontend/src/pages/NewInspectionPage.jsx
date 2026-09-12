@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDashboard } from "../context/DashboardContext";
+import { useTTS } from "../hooks/useTTS";
+import { SpeakerIcon, SpeakerMuteIcon } from "../components/common/Icons";
 import inspectionService from "../services/inspection/inspectionService";
 import SubPageHeader from "../components/layout/SubPageHeader";
 
@@ -76,6 +78,7 @@ export default function NewInspectionPage() {
   const fodderType = searchParams.get("type") || "silage";
   const batchId = searchParams.get("batchId");
   const { t, lang, showToast } = useDashboard();
+  const { speak, stop: stopTTS, isSpeaking } = useTTS();
 
   const [inspectionId, setInspectionId] = useState(null);
   const [isCreating, setIsCreating] = useState(true);
@@ -90,12 +93,16 @@ export default function NewInspectionPage() {
   const [cameraStatus, setCameraStatus] = useState("idle"); // "idle" | "requesting" | "ready" | "error"
   const [cameraFacing, setCameraFacing] = useState("environment");
   const [isFlashing, setIsFlashing] = useState(false);
+  const [liveWarning, setLiveWarning] = useState(null);
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const hasCreatedInspection = useRef(false);
+  const lastSpokenWarningRef = useRef(null);
+  const repeatSinceSpokeRef = useRef(0);
+  const isLiveCheckingRef = useRef(false);
 
   // Material type is fully determined by which homepage button the farmer
   // tapped (Silage vs Feed) — no separate question for it. Storage duration
@@ -125,42 +132,48 @@ export default function NewInspectionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const steps = [
-    {
-      id: "front",
-      title: t.step1Title || "सामने से मुख्य दृश्य",
-      englishTitle: "Front Overview",
-      description: t.step1Desc || "पूरे चारे का ढेर या साइलेज गड्ढा स्क्रीन में दिखना चाहिए।",
-      hint: t.step1Hint || "ढेर से 3-4 फीट दूर खड़े होकर पूरे चारे का आकार व रंग दिखाएँ।",
-      icon: "🌾",
-    },
-    {
-      id: "side",
-      title: t.step2Title || "साइड दृश्य / परतें",
-      englishTitle: "Side Layers",
-      description: t.step2Desc || "चारे के अलग-अलग हिस्सों व परतों की स्थिति देखने के लिए।",
-      hint: t.step2Hint || "किनारे या कटे हुए हिस्से से गहराई व हवा के संपर्क की परत दिखाएँ।",
-      icon: "📐",
-    },
-    {
-      id: "macro",
-      title: t.step3Title || "नज़दीक से बनावट",
-      englishTitle: "Macro Texture",
-      description: t.step3Desc || "चारे की पास से बारीक बनावट, पत्तियाँ और नमी देखने के लिए।",
-      hint: t.step3Hint || "कैमरा 6-10 इंच पास लाएँ। हाथ में चारा पकड़कर फफूंद के बारीक रेशे दिखाएँ।",
-      icon: "🔍",
-    },
-    {
-      id: "storage",
-      title: t.step4Title || "भंडारण परिवेश",
-      englishTitle: "Storage Environment",
-      description: t.step4Desc || "शेड, फर्श, तिरपाल, छत व सुरक्षा स्थिति देखने के लिए।",
-      hint: t.step4Hint || "जहाँ चारा रखा है उस जगह की जमीन, छत व सीलन की तस्वीर लें।",
-      icon: "🏚️",
-    },
-  ];
+  const steps = useMemo(
+    () => [
+      {
+        id: "front",
+        title: t.step1Title || "सामने से मुख्य दृश्य",
+        englishTitle: "Front Overview",
+        description: t.step1Desc || "पूरे चारे का ढेर या साइलेज गड्ढा स्क्रीन में दिखना चाहिए।",
+        hint: t.step1Hint || "ढेर से 3-4 फीट दूर खड़े होकर पूरे चारे का आकार व रंग दिखाएँ।",
+        icon: "🌾",
+      },
+      {
+        id: "side",
+        title: t.step2Title || "साइड दृश्य / परतें",
+        englishTitle: "Side Layers",
+        description: t.step2Desc || "चारे के अलग-अलग हिस्सों व परतों की स्थिति देखने के लिए।",
+        hint: t.step2Hint || "किनारे या कटे हुए हिस्से से गहराई व हवा के संपर्क की परत दिखाएँ।",
+        icon: "📐",
+      },
+      {
+        id: "macro",
+        title: t.step3Title || "नज़दीक से बनावट",
+        englishTitle: "Macro Texture",
+        description: t.step3Desc || "चारे की पास से बारीक बनावट, पत्तियाँ और नमी देखने के लिए।",
+        hint: t.step3Hint || "कैमरा 6-10 इंच पास लाएँ। हाथ में चारा पकड़कर फफूंद के बारीक रेशे दिखाएँ।",
+        icon: "🔍",
+      },
+      {
+        id: "storage",
+        title: t.step4Title || "भंडारण परिवेश",
+        englishTitle: "Storage Environment",
+        description: t.step4Desc || "शेड, फर्श, तिरपाल, छत व सुरक्षा स्थिति देखने के लिए।",
+        hint: t.step4Hint || "जहाँ चारा रखा है उस जगह की जमीन, छत व सीलन की तस्वीर लें।",
+        icon: "🏚️",
+      },
+    ],
+    [t]
+  );
 
-  const voiceGuidanceMessages = [t.voiceStep1, t.voiceStep2, t.voiceStep3, t.voiceStep4];
+  const voiceGuidanceMessages = useMemo(
+    () => [t.voiceStep1, t.voiceStep2, t.voiceStep3, t.voiceStep4],
+    [t]
+  );
 
   const uploadStepImage = async (file) => {
     const stepAtCapture = currentStep;
@@ -181,15 +194,24 @@ export default function NewInspectionPage() {
     }
     setUploadingStep(null);
 
-    // Live AI capture-quality check — a nice-to-have that critiques framing/focus/
-    // lighting on the photo just taken. Never blocks the flow: if it fails (AI
-    // quota, network), fall back to auto-advancing like before.
+    // Live AI capture-quality check powered by Groq
+    // Checks blur, lighting, and feed-likeness with immediate audio guidance in user language
     setCheckingStep(stepAtCapture);
     try {
       const guidance = await inspectionService.getCaptureGuidance(inspectionId, image.id, lang);
       setCaptureFeedback((prev) => ({ ...prev, [stepAtCapture]: guidance }));
+
+      // Speak feedback out loud to the farmer
+      const speechText = guidance?.audio_instruction || guidance?.feedback;
+      if (speechText && isVoiceActive) {
+        speak(speechText, lang);
+      }
+
+      // If photo is good, advance after short delay so farmer hears confirmation
       if (guidance.is_good !== false && stepAtCapture < 3) {
-        setCurrentStep((s) => (s === stepAtCapture ? stepAtCapture + 1 : s));
+        setTimeout(() => {
+          setCurrentStep((s) => (s === stepAtCapture ? stepAtCapture + 1 : s));
+        }, 1200);
       }
     } catch {
       if (stepAtCapture < 3) setCurrentStep((s) => (s === stepAtCapture ? stepAtCapture + 1 : s));
@@ -260,6 +282,106 @@ export default function NewInspectionPage() {
   });
 
   useEffect(() => () => stopCamera(), [stopCamera]);
+
+  // Reset live warning state when moving across steps
+  useEffect(() => {
+    lastSpokenWarningRef.current = null;
+    repeatSinceSpokeRef.current = 0;
+    setLiveWarning(null);
+  }, [currentStep]);
+
+  // Real-time Groq visual inspection stream:
+  // Detects blurry camera, poor lighting, or wrong/irrelevant non-feed items in real time.
+  // Plays audio:
+  // - on every 1 different warning
+  // - on every 3 continuous repetitions of the exact same warning
+  useEffect(() => {
+    if (
+      !inspectionId ||
+      cameraStatus !== "ready" ||
+      capturedImages[currentStep] ||
+      uploadingStep !== null ||
+      checkingStep !== null
+    ) {
+      setLiveWarning(null);
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      if (isLiveCheckingRef.current) return;
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || video.videoWidth === 0) return;
+
+      try {
+        isLiveCheckingRef.current = true;
+        const canvas = document.createElement("canvas");
+        const targetWidth = 320;
+        const targetHeight = Math.round((video.videoHeight / video.videoWidth) * targetWidth) || 240;
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+        const base64Data = canvas.toDataURL("image/jpeg", 0.6);
+
+        const stepInfo = steps[currentStep] || {};
+        const guidance = await inspectionService.checkLiveGuidance(inspectionId, {
+          image: base64Data,
+          stepLabel: stepInfo.englishTitle || "Feed",
+          stepDescription: stepInfo.description || "Feed sample",
+          language: lang,
+        });
+
+        if (!guidance) return;
+        setLiveWarning(guidance);
+
+        const issue = guidance.issue;
+        const audioText = guidance.audio_instruction || guidance.feedback;
+
+        // Auto audio playback rules:
+        // 1. Play automatically on every 1 different warning
+        // 2. Play automatically after every 3 continuous repetitions of the same warning
+        if (issue && issue !== "good") {
+          if (issue !== lastSpokenWarningRef.current) {
+            lastSpokenWarningRef.current = issue;
+            repeatSinceSpokeRef.current = 0;
+            if (isVoiceActive && audioText) {
+              speak(audioText, lang);
+            }
+          } else {
+            repeatSinceSpokeRef.current += 1;
+            if (repeatSinceSpokeRef.current >= 3) {
+              repeatSinceSpokeRef.current = 0;
+              if (isVoiceActive && audioText) {
+                speak(audioText, lang);
+              }
+            }
+          }
+        } else if (issue === "good") {
+          lastSpokenWarningRef.current = null;
+          repeatSinceSpokeRef.current = 0;
+        }
+      } catch {
+        // Silently swallow live frame hiccups to prevent camera flicker
+      } finally {
+        isLiveCheckingRef.current = false;
+      }
+    }, 1800);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [
+    inspectionId,
+    cameraStatus,
+    currentStep,
+    capturedImages[currentStep],
+    uploadingStep,
+    checkingStep,
+    lang,
+    isVoiceActive,
+    speak,
+    steps,
+  ]);
 
   const toggleFacingMode = () => {
     const nextFacing = cameraFacing === "environment" ? "user" : "environment";
@@ -409,25 +531,56 @@ export default function NewInspectionPage() {
             })}
           </div>
 
-          {/* AI guidance */}
+          {/* AI guidance with Voice */}
           {isVoiceActive && (
-            <div className="p-3 rounded-2xl bg-white dark:bg-[#141914] border border-[#e5e0d8] dark:border-[#252825] flex items-start gap-2.5 shadow-sm">
-              <IcoAI />
-              <div>
-                <p className="text-[11px] font-extrabold text-[#059652] dark:text-emerald-400 uppercase tracking-wide">
-                  {t.aiGuidanceLabel || "लाइव सहायक सुझाव:"}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
-                  {checkingStep === currentStep
-                    ? (t.aiCheckingPhoto || "AI फोटो की जांच कर रहा है...")
-                    : captureFeedback[currentStep]?.feedback || voiceGuidanceMessages[currentStep]}
-                </p>
-                {captureFeedback[currentStep]?.is_good === false && (
-                  <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mt-1">
-                    {t.retakeSuggestedLabel || "कृपया फोटो दोबारा लें"}
+            <div className="p-3 rounded-2xl bg-white dark:bg-[#141914] border border-[#e5e0d8] dark:border-[#252825] flex items-start justify-between gap-2.5 shadow-sm">
+              <div className="flex items-start gap-2.5">
+                <IcoAI />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[11px] font-extrabold text-[#059652] dark:text-emerald-400 uppercase tracking-wide">
+                      {t.aiGuidanceLabel || "लाइव सहायक सुझाव (Groq):"}
+                    </p>
+                    {captureFeedback[currentStep]?.issue && captureFeedback[currentStep]?.issue !== "good" && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        {captureFeedback[currentStep].issue === "blurry"
+                          ? (t.issueBlurry || "धुंधला / Blurry")
+                          : captureFeedback[currentStep].issue === "not_feed"
+                          ? (t.issueNotFeed || "चारा नहीं है / Not Feed")
+                          : (t.issueLighting || "रोशनी / Lighting")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-700 dark:text-gray-200 mt-0.5 leading-relaxed font-medium">
+                    {checkingStep === currentStep
+                      ? (t.aiCheckingPhoto || "Groq AI फोटो व कैमरे की जांच कर रहा है...")
+                      : captureFeedback[currentStep]?.feedback || voiceGuidanceMessages[currentStep]}
                   </p>
-                )}
+                  {captureFeedback[currentStep]?.is_good === false && (
+                    <p className="text-[11px] font-bold text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{t.retakeSuggestedLabel || "कृपया फोन स्थिर पकड़कर सही चारे की फोटो दोबारा लें"}</span>
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Speaker audio replay button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const txt = captureFeedback[currentStep]?.audio_instruction || captureFeedback[currentStep]?.feedback || voiceGuidanceMessages[currentStep];
+                  if (txt) speak(txt, lang);
+                }}
+                className={`p-2 rounded-xl transition-all flex items-center justify-center shrink-0 cursor-pointer ${
+                  isSpeaking
+                    ? "bg-emerald-500 text-white animate-pulse"
+                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
+                }`}
+                title="Replay Voice Guidance"
+              >
+                <SpeakerIcon className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -438,34 +591,103 @@ export default function NewInspectionPage() {
             )}
             {isFlashing && <div className="absolute inset-0 z-20 bg-white animate-pulse" />}
 
-            <div className="relative z-10 m-3 p-3 rounded-xl bg-black/60 backdrop-blur-sm text-white">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-black">{step.title}</span>
-                <div className="flex items-center gap-2">
+            {/* Unified Header & Groq Determination HUD Card */}
+            <div
+              className={`relative z-10 m-3 p-3 rounded-2xl backdrop-blur-md text-white border transition-all duration-300 shadow-xl ${
+                !capturedImages[currentStep] && liveWarning?.issue === "human_detected"
+                  ? "bg-rose-950/80 border-rose-500/60 shadow-rose-950/40 animate-pulse"
+                  : !capturedImages[currentStep] && liveWarning?.issue === "not_feed"
+                  ? "bg-rose-950/80 border-rose-500/60 shadow-rose-950/40 animate-pulse"
+                  : !capturedImages[currentStep] && liveWarning?.issue === "blurry"
+                  ? "bg-amber-950/80 border-amber-500/60 shadow-amber-950/40"
+                  : !capturedImages[currentStep] && (liveWarning?.issue === "dark" || liveWarning?.issue === "overexposed")
+                  ? "bg-orange-950/80 border-orange-500/60 shadow-orange-950/40"
+                  : !capturedImages[currentStep] && liveWarning?.issue === "good"
+                  ? "bg-emerald-950/80 border-emerald-500/60 shadow-emerald-950/40"
+                  : "bg-black/70 border-white/15"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-black truncate">{step.title}</span>
+                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider shrink-0">
+                    {step.englishTitle}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                   {!capturedImages[currentStep] && cameraStatus === "ready" && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-black text-emerald-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      LIVE
-                    </span>
+                    <>
+                      {liveWarning?.issue === "human_detected" ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/25 border border-rose-400/60 text-[9px] font-black text-rose-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                          🔴 {t.liveHumanTitle || "Person Detected"}
+                        </span>
+                      ) : liveWarning?.issue === "not_feed" ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/25 border border-rose-400/60 text-[9px] font-black text-rose-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                          🔴 {t.liveWrongItemTitle || "Wrong Item"}
+                        </span>
+                      ) : liveWarning?.issue === "blurry" ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/25 border border-amber-400/60 text-[9px] font-black text-amber-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                          📷 {t.liveBlurryTitle || "Camera Blurry"}
+                        </span>
+                      ) : liveWarning?.issue === "dark" || liveWarning?.issue === "overexposed" ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/25 border border-orange-400/60 text-[9px] font-black text-orange-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                          💡 {liveWarning.issue === "dark" ? (t.liveDarkTitle || "Low Light") : (t.liveGlareTitle || "Glare")}
+                        </span>
+                      ) : liveWarning?.issue === "good" ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/60 text-[9px] font-black text-emerald-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          ✓ {t.liveFeedReadyShort || "Ready to Snap"}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-black text-emerald-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={toggleFacingMode}
+                        className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center cursor-pointer transition-all active:scale-90"
+                        title="Flip Camera"
+                      >
+                        <IcoFlipCamera />
+                      </button>
+                    </>
                   )}
-                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">{step.englishTitle}</span>
                 </div>
               </div>
-              <p className="text-[11px] text-gray-200 leading-snug">{step.description}</p>
-              <div className="flex items-center gap-1.5 mt-1.5">
+
+              {/* Dynamic instruction text determined by Groq analysis */}
+              <p
+                className={`text-xs leading-relaxed font-medium transition-colors ${
+                  !capturedImages[currentStep] && (liveWarning?.issue === "human_detected" || liveWarning?.issue === "not_feed")
+                    ? "text-rose-100 font-semibold"
+                    : !capturedImages[currentStep] && liveWarning?.issue === "blurry"
+                    ? "text-amber-100 font-semibold"
+                    : !capturedImages[currentStep] && (liveWarning?.issue === "dark" || liveWarning?.issue === "overexposed")
+                    ? "text-orange-100 font-semibold"
+                    : !capturedImages[currentStep] && liveWarning?.issue === "good"
+                    ? "text-emerald-100 font-semibold"
+                    : "text-gray-200"
+                }`}
+              >
+                {!capturedImages[currentStep] && liveWarning?.feedback
+                  ? liveWarning.feedback
+                  : step.description}
+              </p>
+
+              {/* Helpful tip row */}
+              <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-white/10">
                 <IcoTip />
-                <p className="text-[11px] text-amber-200 font-semibold">{step.hint}</p>
+                <p className="text-[11px] text-amber-200/90 font-semibold truncate">{step.hint}</p>
               </div>
             </div>
-
-            {!capturedImages[currentStep] && cameraStatus === "ready" && (
-              <button
-                onClick={toggleFacingMode}
-                className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center cursor-pointer active:scale-90"
-              >
-                <IcoFlipCamera />
-              </button>
-            )}
 
             {uploadingStep === currentStep ? (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60">

@@ -611,3 +611,23 @@ class AIEndpointApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['storage_duration_days'], 7)
+
+    @patch('apps.inspections.views.generate_groq_guidance')
+    def test_live_guidance_endpoint(self, mock_guidance):
+        mock_guidance.return_value = {
+            'is_good': False,
+            'issue': 'not_feed',
+            'feedback': 'Wrong item in frame',
+            'audio_instruction': 'Wrong item in frame',
+            'metrics': {'blur_score': 50.0, 'brightness': 120.0, 'feed_color_ratio': 0.05},
+        }
+        b64_sample = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+        response = self.client.post(
+            f'/api/inspections/{self.inspection_id}/live-guidance/',
+            {'image': b64_sample, 'step_label': 'Front', 'step_description': 'Feed', 'language': 'hi'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['issue'], 'not_feed')
+        self.assertEqual(response.data['feedback'], 'Wrong item in frame')
+

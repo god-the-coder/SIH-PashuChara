@@ -109,6 +109,37 @@ class GenerateJsonTests(SimpleTestCase):
                 storage_duration_days=10, images=[(b'fake', 'image/jpeg')],
             )
 
+    @patch('ai.client.requests.post')
+    def test_parallel_multi_key_sharded_analysis_and_synchronization(self, mock_post):
+        mock_post.return_value = self._mock_post(
+            '{"summary": "Healthy green fodder with minor dust", "headline": "Good Quality", '
+            '"confidence": 92, "indicators": [{"name": "dust", "category": "contamination", "severity": "mild", "verify_only": false, "description": "Minor surface dust"}]}'
+        )
+        with override_settings(
+            GEMINI_KEY='k1',
+            GEMINI_KEYS=['k1', 'k2', 'k3', 'k4'],
+        ):
+            # Test with 4 distinct images sharded across 4 keys in parallel
+            images = [
+                (b'img1_data', 'image/jpeg'),
+                (b'img2_data', 'image/jpeg'),
+                (b'img3_data', 'image/jpeg'),
+                (b'img4_data', 'image/jpeg'),
+            ]
+            result = ai_client.analyze_material(
+                inspection_type='SILAGE', material_type='SILAGE', material_type_other='',
+                storage_duration_days=10, followup_qa=[], images=images,
+            )
+
+            self.assertIn('summary', result)
+            self.assertIn('headline', result)
+            self.assertIn('confidence', result)
+            self.assertIn('indicators', result)
+            self.assertEqual(len(result['indicators']), 1)
+            self.assertEqual(result['indicators'][0]['name'], 'dust')
+            # Verify mock_post was called 4 times (once per photo shard)
+            self.assertEqual(mock_post.call_count, 4)
+
 
 class ClassifyRiskTests(SimpleTestCase):
     def test_low_confidence_is_always_uncertain(self):

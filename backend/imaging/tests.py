@@ -75,3 +75,35 @@ class CreateProcessedCopyTests(SimpleTestCase):
     def test_rejects_undecodable_bytes(self):
         with self.assertRaises(ImageProcessingError):
             create_processed_copy(b'not an image at all')
+
+
+class GroqGuidanceTests(SimpleTestCase):
+    def test_analyze_capture_quality_detects_dark_and_blur(self):
+        from ai.groq_guidance import analyze_capture_quality
+
+        # Dark image
+        dark_bytes = _make_jpeg_bytes(color=(10, 10, 10))
+        metrics = analyze_capture_quality(dark_bytes)
+        self.assertFalse(metrics['is_good'])
+        self.assertIn(metrics['issue'], ('dark', 'blurry', 'not_feed'))
+
+        # Clean feed-like image
+        feed_bytes = _make_jpeg_bytes(color=(40, 120, 60))
+        metrics = analyze_capture_quality(feed_bytes)
+        self.assertIn('issue', metrics)
+        self.assertIn('blur_score', metrics)
+
+    def test_generate_groq_guidance_returns_audio_instruction(self):
+        from ai.groq_guidance import generate_groq_guidance
+
+        sample_bytes = _make_jpeg_bytes(color=(10, 10, 10))
+        result = generate_groq_guidance(
+            step_label="Front Overview",
+            step_description="Show overall feed",
+            image_bytes=sample_bytes,
+            language="hi",
+        )
+        self.assertIn('is_good', result)
+        self.assertIn('feedback', result)
+        self.assertIn('audio_instruction', result)
+        self.assertTrue(len(result['audio_instruction']) > 0)

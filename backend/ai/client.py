@@ -1,4 +1,5 @@
 import base64
+import concurrent.futures
 import json
 import re
 
@@ -41,16 +42,70 @@ def _parse_json(text):
             raise AIServiceError(f'Gemini returned invalid JSON: {exc}') from exc
 
 
-def _generate_json(*, prompt, images):
-    if not getattr(settings, 'GEMINI_KEY', None):
+MODEL_ALIASES = {
+    'gemini-3.5-flash': 'gemini-3.5-flash',
+    'gemini 3.5 flash': 'gemini-3.5-flash',
+    'gemini-3.5-flash-lite': 'gemini-3.5-flash-lite',
+    'gemini 3.5 flash lite': 'gemini-3.5-flash-lite',
+    'gemini-3.1-pro': 'gemini-3.1-pro-preview',
+    'gemini 3.1 pro': 'gemini-3.1-pro-preview',
+    'gemini-3.1-pro-preview': 'gemini-3.1-pro-preview',
+    'gemini-3.1-flash-lite': 'gemini-3.1-flash-lite',
+    'gemini 3.1 flash lite': 'gemini-3.1-flash-lite',
+    'gemini-3-flash': 'gemini-3-flash-preview',
+    'gemini 3 flash': 'gemini-3-flash-preview',
+    'gemini-3.8-flash': 'gemini-3.8-flash',
+    'gemini 3.8 flash': 'gemini-3.8-flash',
+    'gemini-3.7-flash': 'gemini-3.7-flash',
+    'gemini 3.7 flash': 'gemini-3.7-flash',
+    'gemini-3.6-flash': 'gemini-3.6-flash',
+    'gemini 3.6 flash': 'gemini-3.6-flash',
+}
+
+DEFAULT_FREE_MODELS = [
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.1-pro-preview',
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-flash-latest',
+    'gemini-pro-latest',
+    'gemini-flash-lite-latest',
+]
+
+
+def _get_api_keys_pool():
+    # If GEMINI_KEY is falsy (e.g. override_settings(GEMINI_KEY='')), honor it directly
+    gemini_key = getattr(settings, 'GEMINI_KEY', None)
+    if not gemini_key:
+        return []
+
+    keys = getattr(settings, 'GEMINI_KEYS', None)
+    if keys and isinstance(keys, list) and len(keys) > 0:
+        return [k for k in keys if k]
+    return [gemini_key]
+
+
+def _generate_json(*, prompt, images, api_key=None):
+    pool = _get_api_keys_pool()
+    if not api_key and not pool:
         raise AIServiceError('GEMINI_KEY is not configured.')
 
-    configured_model = getattr(settings, 'GEMINI_MODEL', 'gemini-3.6-flash')
-    models_to_try = [configured_model]
-    if configured_model == 'gemini-3.8-flash':
-        models_to_try.append('gemini-3.6-flash')
-    elif configured_model == 'gemini-3.6-flash':
-        models_to_try.append('gemini-3.8-flash')
+    # Use provided key or primary from pool
+    keys_to_try = [api_key] if api_key else list(pool)
+    for k in pool:
+        if k not in keys_to_try:
+            keys_to_try.append(k)
+
+    raw_model = getattr(settings, 'GEMINI_MODEL', 'gemini-3.5-flash')
+    normalized = MODEL_ALIASES.get(str(raw_model).strip().lower(), str(raw_model).strip())
+    models_to_try = [normalized]
+    for m in DEFAULT_FREE_MODELS:
+        if m not in models_to_try:
+            models_to_try.append(m)
 
     payload = {
         'contents': [
@@ -67,58 +122,60 @@ def _generate_json(*, prompt, images):
     }
 
     last_error_detail = None
-    for model in models_to_try:
-        url = GEMINI_API_URL_TEMPLATE.format(model=model)
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    'x-goog-api-key': settings.GEMINI_KEY,
-                    'Content-Type': 'application/json',
-                },
-                json=payload,
-                timeout=60,
-            )
-        except requests.RequestException as exc:
-            raise AIServiceError(f'Gemini request failed: {exc}') from exc
-
-        if not response.ok:
+    # Key rotation x Model fallback
+    for current_key in keys_to_try:
+        for model in models_to_try:
+            url = GEMINI_API_URL_TEMPLATE.format(model=model)
             try:
-                detail = response.json().get('error', {}).get('message', response.text)
-            except Exception:
-                detail = response.text
-            last_error_detail = f'{response.status_code} {detail}'
-            # 503 = model overloaded, 429 = this model's free-tier quota exhausted —
-            # both are worth retrying on the other model, since each has its own
-            # separate free-tier quota bucket.
-            if response.status_code in (503, 429) and model != models_to_try[-1]:
+                response = requests.post(
+                    url,
+                    headers={
+                        'x-goog-api-key': current_key,
+                        'Content-Type': 'application/json',
+                    },
+                    json=payload,
+                    timeout=60,
+                )
+            except requests.RequestException as exc:
+                last_error_detail = str(exc)
                 continue
-            raise AIServiceError(f'Gemini request failed: {last_error_detail}')
 
-        try:
-            body = response.json()
-            candidates = body.get('candidates', [])
-            if not candidates:
-                raise AIServiceError('Gemini returned no candidates.')
-            parts = candidates[0].get('content', {}).get('parts', [])
-            text = ''.join(part.get('text', '') for part in parts if 'text' in part)
-        except Exception as exc:
-            raise AIServiceError(f'Gemini returned an unexpected response shape: {exc}') from exc
+            if not response.ok:
+                try:
+                    detail = response.json().get('error', {}).get('message', response.text)
+                except Exception:
+                    detail = response.text
+                last_error_detail = f'{response.status_code} {detail}'
+                # 503 = overloaded, 502/500 = transient, 429 = quota limit, 404 = preview rename
+                if response.status_code in (503, 502, 500, 429, 404):
+                    continue
+                # Other error on this key, try next key
+                break
 
-        if not text:
-            raise AIServiceError('Gemini returned an empty response.')
+            try:
+                body = response.json()
+                candidates = body.get('candidates', [])
+                if not candidates:
+                    continue
+                parts = candidates[0].get('content', {}).get('parts', [])
+                text = ''.join(part.get('text', '') for part in parts if 'text' in part)
+            except Exception as exc:
+                last_error_detail = str(exc)
+                continue
 
-        return _parse_json(text)
+            if text:
+                return _parse_json(text)
 
     raise AIServiceError(f'Gemini request failed: {last_error_detail}')
 
 
 def generate_followup_questions(
-    *, inspection_type, material_type, material_type_other, storage_duration_days, images,
+    *, inspection_type, material_type, material_type_other, storage_duration_days, images, language='en',
 ):
     prompt = build_followup_questions_prompt(
         inspection_type=inspection_type, material_type=material_type,
         material_type_other=material_type_other, storage_duration_days=storage_duration_days,
+        language=language,
     )
     data = _generate_json(prompt=prompt, images=images)
 
@@ -140,11 +197,82 @@ def generate_capture_guidance(*, step_label, step_description, image, language='
     return {'is_good': bool(data['is_good']), 'feedback': str(data['feedback'])}
 
 
+def _merge_indicator(existing, new_item):
+    severity_rank = {'none': 0, 'mild': 1, 'moderate': 2, 'severe': 3}
+    curr_sev = existing.get('severity', 'none')
+    new_sev = new_item.get('severity', 'none')
+    if severity_rank.get(new_sev, 0) > severity_rank.get(curr_sev, 0):
+        existing['severity'] = new_sev
+        existing['description'] = new_item.get('description', existing.get('description', ''))
+    if new_item.get('verify_only'):
+        existing['verify_only'] = True
+
+
+def _synchronize_shard_results(results):
+    """Consolidates findings from parallel image shards into a single authoritative report."""
+    valid_results = [r for r in results if isinstance(r, dict) and 'indicators' in r]
+    if not valid_results:
+        raise AIServiceError('No valid analysis results returned from worker shards.')
+
+    # If only 1 result returned, use as base
+    if len(valid_results) == 1:
+        return valid_results[0]
+
+    # Combine indicators across all photo perspectives
+    indicators_map = {}
+    for res in valid_results:
+        for ind in res.get('indicators', []):
+            name = ind.get('name', '').strip().lower()
+            if not name:
+                continue
+            if name not in indicators_map:
+                indicators_map[name] = dict(ind)
+            else:
+                _merge_indicator(indicators_map[name], ind)
+
+    # Average confidence across valid worker shards
+    confidences = [r.get('confidence') for r in valid_results if isinstance(r.get('confidence'), (int, float))]
+    avg_confidence = round(sum(confidences) / len(confidences)) if confidences else 85
+
+    # Pick the most critical headline
+    severest_headline = valid_results[0].get('headline', 'Analysis Complete')
+    for res in valid_results:
+        hl = res.get('headline', '')
+        if any(w in hl.lower() for w in ('spoil', 'mold', 'mould', 'danger', 'severe', 'reject', 'rot')):
+            severest_headline = hl
+            break
+
+    # Synthesize comprehensive summary from the views
+    summaries = [r.get('summary', '').strip() for r in valid_results if r.get('summary')]
+    combined_summary = ' '.join(summaries[:2]) if summaries else 'Fodder inspection analyzed across multiple camera angles.'
+
+    # Synchronize nutritional estimates
+    nutrition = None
+    for res in valid_results:
+        if res.get('nutritional_estimate'):
+            nutrition = res['nutritional_estimate']
+            break
+
+    requires_lab = any(res.get('requires_lab_testing', False) for res in valid_results)
+
+    return {
+        'summary': combined_summary,
+        'headline': severest_headline,
+        'confidence': avg_confidence,
+        'indicators': list(indicators_map.values()),
+        'nutritional_estimate': nutrition,
+        'requires_lab_testing': requires_lab,
+    }
+
+
 def analyze_material(
     *, inspection_type, material_type, material_type_other, storage_duration_days, followup_qa, images,
     storage_condition=None, moisture_exposure=None, farmer_observation=None,
     temperature_celsius=None, humidity_percent=None, primary_image_count=None,
 ):
+    if not images:
+        raise AIServiceError('At least one image is required for analysis.')
+
     prompt = build_analysis_prompt(
         inspection_type=inspection_type, material_type=material_type,
         material_type_other=material_type_other, storage_duration_days=storage_duration_days,
@@ -152,13 +280,41 @@ def analyze_material(
         farmer_observation=farmer_observation, temperature_celsius=temperature_celsius,
         humidity_percent=humidity_percent, primary_image_count=primary_image_count, total_image_count=len(images),
     )
-    data = _generate_json(prompt=prompt, images=images)
 
-    if not isinstance(data, dict):
-        raise AIServiceError('Expected a JSON object for the analysis result.')
+    keys_pool = _get_api_keys_pool()
 
-    required_keys = {'summary', 'headline', 'confidence', 'indicators'}
-    if not required_keys.issubset(data.keys()):
-        raise AIServiceError(f'Analysis response missing required keys: {required_keys - data.keys()}')
+    # If single image or only 1 key available, execute standard request
+    if len(images) <= 1 or len(keys_pool) <= 1:
+        data = _generate_json(prompt=prompt, images=images)
+        if not isinstance(data, dict):
+            raise AIServiceError('Expected a JSON object for the analysis result.')
+        required_keys = {'summary', 'headline', 'confidence', 'indicators'}
+        if not required_keys.issubset(data.keys()):
+            raise AIServiceError(f'Analysis response missing required keys: {required_keys - data.keys()}')
+        return data
 
-    return data
+    # Parallel Computing: Shard photos across distinct API keys concurrently
+    def _analyze_shard(idx, img_tuple):
+        key = keys_pool[idx % len(keys_pool)]
+        try:
+            return _generate_json(prompt=prompt, images=[img_tuple], api_key=key)
+        except Exception:
+            # Fallback retry with full pool
+            return _generate_json(prompt=prompt, images=[img_tuple])
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(images), 4)) as executor:
+        futures = [executor.submit(_analyze_shard, idx, img) for idx, img in enumerate(images)]
+        shard_results = []
+        for f in concurrent.futures.as_completed(futures):
+            try:
+                res = f.result()
+                if isinstance(res, dict) and 'indicators' in res:
+                    shard_results.append(res)
+            except Exception:
+                pass
+
+    if not shard_results:
+        # If all worker threads failed, fallback to sequential all-images pass
+        return _generate_json(prompt=prompt, images=images)
+
+    return _synchronize_shard_results(shard_results)

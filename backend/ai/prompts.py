@@ -30,7 +30,8 @@ def _context_block(*, inspection_type, material_type, material_type_other, stora
     )
 
 
-def build_followup_questions_prompt(*, inspection_type, material_type, material_type_other, storage_duration_days):
+def build_followup_questions_prompt(*, inspection_type, material_type, material_type_other, storage_duration_days, language='en'):
+    language_name = _GUIDANCE_LANGUAGE_NAMES.get(language, 'English')
     context = _context_block(
         inspection_type=inspection_type, material_type=material_type,
         material_type_other=material_type_other, storage_duration_days=storage_duration_days,
@@ -40,7 +41,7 @@ def build_followup_questions_prompt(*, inspection_type, material_type, material_
         'You are shown photos of the material described below.\n\n'
         f'{context}\n'
         'Based only on what is visually ambiguous or uncertain in the photos, write 2 to 4 short, plain-language '
-        'follow-up questions to ask the farmer that would meaningfully improve your assessment '
+        f'follow-up questions in {language_name} to ask the farmer that would meaningfully improve your assessment '
         '(for example, about smell, texture, or recent weather exposure). '
         'Do not ask about anything already stated above. If the photos give you enough information already, '
         'return fewer questions, even zero.\n\n'

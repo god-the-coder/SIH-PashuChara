@@ -1,7 +1,10 @@
 import asyncio
 import logging
 
-from googletrans import Translator
+try:
+    from googletrans import Translator
+except ImportError:
+    Translator = None
 
 from .exceptions import TranslationServiceError
 
@@ -27,19 +30,44 @@ class TranslationService:
     a farmer from seeing their result.
     """
 
-    SUPPORTED_LANGUAGES = {'en', 'hi', 'gu', 'kn', 'pa'}  # English, Hindi, Gujarati, Kannada, Punjabi
+    SUPPORTED_LANGUAGES = {'en', 'hi', 'gu', 'kn', 'pa', 'mr', 'ta'}  # English, Hindi, Gujarati, Kannada, Punjabi, Marathi, Tamil
     DEFAULT_LANGUAGE = 'en'
 
     def __init__(self, translator=None):
-        self._translator = translator if translator is not None else Translator()
+        if translator is not None:
+            self._translator = translator
+        elif Translator is not None:
+            self._translator = Translator()
+        else:
+            self._translator = None
 
     def is_supported(self, language_code):
         return language_code in self.SUPPORTED_LANGUAGES
 
     def _run_translation(self, text, *, src, dest):
+        if self._translator is None:
+            raise TranslationServiceError('Translation provider is not installed or available.')
+
         try:
-            result = asyncio.run(self._translator.translate(text, src=src, dest=dest))
-            return result.text
+            from googletrans import Translator
+            translator = Translator()
+            call_res = translator.translate(text, src=src, dest=dest)
+            if asyncio.iscoroutine(call_res):
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+
+                if loop and loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        res = pool.submit(asyncio.run, call_res).result()
+                else:
+                    res = asyncio.run(call_res)
+            else:
+                res = call_res
+
+            return getattr(res, 'text', str(res))
         except Exception as exc:
             raise TranslationServiceError(f'Translation failed ({src} -> {dest}): {exc}') from exc
 

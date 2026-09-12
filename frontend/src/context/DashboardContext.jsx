@@ -5,6 +5,7 @@ import notificationService from "../services/notifications/notificationService";
 import farmService from "../services/farm/farmService";
 import { getApiError } from "../services/api/error";
 import { detectCurrentLocationLabel } from "../utils/geolocation";
+import speechService from "../services/voice/speechService";
 
 const DashboardContext = createContext(null);
 
@@ -200,9 +201,22 @@ export function DashboardProvider({ children }) {
     setIsVoiceOn((prev) => {
       const next = !prev;
       showToast(next ? t.toastVoiceOn : t.toastVoiceOff);
+      if (next) {
+        const feedback =
+          lang === "en"
+            ? "Voice assistance turned on"
+            : lang === "mr"
+            ? "आवाज सहाय्य चालू केले"
+            : lang === "ta"
+            ? "குரல் உதவி இயக்கப்பட்டது"
+            : "आवाज़ सहायता चालू की गई";
+        speechService.speak(feedback, { lang });
+      } else {
+        speechService.stop();
+      }
       return next;
     });
-  }, [t, showToast]);
+  }, [t, showToast, lang]);
 
   // Notifications
   const refreshNotifications = useCallback(async () => {
